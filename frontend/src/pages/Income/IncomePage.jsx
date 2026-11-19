@@ -141,66 +141,124 @@ export default function IncomePage() {
           </div>
         </div>
 
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>INCOME STREAM</th>
-                <th>CATEGORY</th>
-                <th>DATE</th>
-                <th>AMOUNT</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {incomes.length === 0 ? (
+        {/* Mobile Income Cards */}
+        <div className="mobile-tx-feed" style={{ marginTop: "14px" }}>
+          {incomes.length === 0 ? (
+            <div className="empty-tx-mobile">
+              <div className="empty-tx-icon">💰</div>
+              <h5>{loading ? "Loading income records..." : "No income records found"}</h5>
+              <p>Tap below to record an income stream.</p>
+              <button type="button" className="empty-add-btn" onClick={openAddModal}>
+                + Add Income
+              </button>
+            </div>
+          ) : (
+            incomes.map((inc) => (
+              <div className="mobile-tx-card" key={`mob-inc-${inc.id}`}>
+                <div className="mobile-tx-avatar" style={{ backgroundColor: "#ecfdf5" }}>
+                  <span className="mobile-tx-icon">{inc.category_icon || "💰"}</span>
+                </div>
+                <div className="mobile-tx-info">
+                  <strong className="mobile-tx-title">{inc.description || inc.category_name}</strong>
+                  <div className="mobile-tx-meta">
+                    <span className="mobile-tx-cat">{inc.category_name}</span>
+                    <span className="mobile-tx-dot">•</span>
+                    <span className="mobile-tx-date">{inc.transaction_date}</span>
+                  </div>
+                </div>
+                <div className="mobile-tx-right">
+                  <span className="mobile-tx-amount income">
+                    +₹{inc.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      style={{ width: "28px", height: "28px" }}
+                      onClick={() => openEditModal(inc)}
+                      title="Edit"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      style={{ width: "28px", height: "28px", color: "#dc2626" }}
+                      onClick={() => handleDelete(inc.id)}
+                      title="Delete"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="desktop-table-container">
+          <div className="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="5" style={{ textAlign: "center", padding: "32px", color: "#8a90a2" }}>
-                    {loading ? "Loading income records..." : "No income records found."}
-                  </td>
+                  <th>INCOME STREAM</th>
+                  <th>CATEGORY</th>
+                  <th>DATE</th>
+                  <th>AMOUNT</th>
+                  <th>ACTIONS</th>
                 </tr>
-              ) : (
-                incomes.map((inc) => (
-                  <tr key={inc.id}>
-                    <td>
-                      <div className="transaction-name">
-                        <span className="transaction-emoji">{inc.category_icon}</span>
-                        <strong>{inc.description || inc.category_name}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="payment-badge" style={{ background: "#e8f8ef", color: "#16844b" }}>
-                        {inc.category_name}
-                      </span>
-                    </td>
-                    <td>{inc.transaction_date}</td>
-                    <td className="amount" style={{ color: "#16844b", fontWeight: "700" }}>
-                      +₹{inc.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: "6px" }}>
-                        <button
-                          className="secondary-button"
-                          style={{ padding: "6px 8px" }}
-                          onClick={() => openEditModal(inc)}
-                          title="Edit Income"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          className="delete-row-btn"
-                          onClick={() => handleDelete(inc.id)}
-                          title="Delete Income"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+              </thead>
+              <tbody>
+                {incomes.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: "center", padding: "32px", color: "#8a90a2" }}>
+                      {loading ? "Loading income records..." : "No income records found."}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  incomes.map((inc) => (
+                    <tr key={inc.id}>
+                      <td>
+                        <div className="transaction-name">
+                          <span className="transaction-emoji">{inc.category_icon}</span>
+                          <strong>{inc.description || inc.category_name}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="payment-badge" style={{ background: "#e8f8ef", color: "#16844b" }}>
+                          {inc.category_name}
+                        </span>
+                      </td>
+                      <td>{inc.transaction_date}</td>
+                      <td className="amount" style={{ color: "#16844b", fontWeight: "700" }}>
+                        +₹{inc.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button
+                            className="secondary-button"
+                            style={{ padding: "6px 8px" }}
+                            onClick={() => openEditModal(inc)}
+                            title="Edit Income"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            className="delete-row-btn"
+                            onClick={() => handleDelete(inc.id)}
+                            title="Delete Income"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

@@ -80,64 +80,115 @@ export default function TransactionsPage() {
       </div>
 
       <section className="panel">
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>TRANSACTION</th>
-                <th>TYPE</th>
-                <th>CATEGORY</th>
-                <th>PAYMENT METHOD</th>
-                <th>DATE</th>
-                <th>AMOUNT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.length === 0 ? (
+        {/* Mobile Feed */}
+        <div className="mobile-tx-feed" style={{ marginTop: "6px" }}>
+          {transactions.length === 0 ? (
+            <div className="empty-tx-mobile">
+              <div className="empty-tx-icon">🧾</div>
+              <h5>{loading ? "Loading transactions..." : "No matching transactions found"}</h5>
+              <p>Try clearing filters or search keywords.</p>
+            </div>
+          ) : (
+            transactions.map((item) => (
+              <div className="mobile-tx-card" key={`mob-${item.type}-${item.id}`}>
+                <div
+                  className="mobile-tx-avatar"
+                  style={{
+                    backgroundColor: item.type === "income" ? "#ecfdf5" : "#fef2f2"
+                  }}
+                >
+                  <span className="mobile-tx-icon">
+                    {item.category_icon || (item.type === "income" ? "💰" : "💳")}
+                  </span>
+                </div>
+                <div className="mobile-tx-info">
+                  <strong className="mobile-tx-title">{item.name}</strong>
+                  <div className="mobile-tx-meta">
+                    <span className="mobile-tx-cat">{item.category}</span>
+                    <span className="mobile-tx-dot">•</span>
+                    <span className="mobile-tx-date">{item.date}</span>
+                    {item.payment_method && (
+                      <>
+                        <span className="mobile-tx-dot">•</span>
+                        <span className="mobile-tx-payment">{item.payment_method}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="mobile-tx-right">
+                  <span
+                    className={`mobile-tx-amount ${item.type === "income" ? "income" : "expense"}`}
+                  >
+                    {item.type === "income" ? "+" : "-"}₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                  <span className="mobile-tx-status">Completed</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="desktop-table-container">
+          <div className="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", padding: "36px", color: "#8a90a2" }}>
-                    {loading ? "Loading transactions..." : "No matching transactions found in the database."}
-                  </td>
+                  <th>TRANSACTION</th>
+                  <th>TYPE</th>
+                  <th>CATEGORY</th>
+                  <th>PAYMENT METHOD</th>
+                  <th>DATE</th>
+                  <th>AMOUNT</th>
                 </tr>
-              ) : (
-                transactions.map((item) => (
-                  <tr key={`${item.type}-${item.id}`}>
-                    <td>
-                      <div className="transaction-name">
-                        <span className="transaction-emoji">{item.category_icon || (item.type === "income" ? "💰" : "💳")}</span>
-                        <strong>{item.name}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      {item.type === "income" ? (
-                        <span className="status-pill pill-normal">
-                          <ArrowDownRight size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Income
-                        </span>
-                      ) : (
-                        <span className="status-pill pill-danger">
-                          <ArrowUpRight size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Expense
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="payment-badge">{item.category}</span>
-                    </td>
-                    <td>{item.payment_method}</td>
-                    <td>{item.date}</td>
-                    <td
-                      className="amount"
-                      style={{
-                        color: item.type === "income" ? "#16844b" : "#d32f2f",
-                        fontWeight: "700",
-                      }}
-                    >
-                      {item.type === "income" ? "+" : "-"}₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </thead>
+              <tbody>
+                {transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: "center", padding: "36px", color: "#8a90a2" }}>
+                      {loading ? "Loading transactions..." : "No matching transactions found in the database."}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  transactions.map((item) => (
+                    <tr key={`${item.type}-${item.id}`}>
+                      <td>
+                        <div className="transaction-name">
+                          <span className="transaction-emoji">{item.category_icon || (item.type === "income" ? "💰" : "💳")}</span>
+                          <strong>{item.name}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        {item.type === "income" ? (
+                          <span className="status-pill pill-normal">
+                            <ArrowDownRight size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Income
+                          </span>
+                        ) : (
+                          <span className="status-pill pill-danger">
+                            <ArrowUpRight size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Expense
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="payment-badge">{item.category}</span>
+                      </td>
+                      <td>{item.payment_method}</td>
+                      <td>{item.date}</td>
+                      <td
+                        className="amount"
+                        style={{
+                          color: item.type === "income" ? "#16844b" : "#d32f2f",
+                          fontWeight: "700",
+                        }}
+                      >
+                        {item.type === "income" ? "+" : "-"}₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* PAGINATION CONTROLS */}

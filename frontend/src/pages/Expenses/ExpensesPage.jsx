@@ -189,72 +189,136 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>TRANSACTION</th>
-                <th>CATEGORY</th>
-                <th>DATE</th>
-                <th>PAYMENT METHOD</th>
-                <th>AMOUNT</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.length === 0 ? (
+        {/* Mobile Friendly Expenses Cards */}
+        <div className="mobile-tx-feed" style={{ marginTop: "14px" }}>
+          {expenses.length === 0 ? (
+            <div className="empty-tx-mobile">
+              <div className="empty-tx-icon">🧾</div>
+              <h5>{loading ? "Loading expenses..." : "No expenses found"}</h5>
+              <p>Tap below to record an expense.</p>
+              <button type="button" className="empty-add-btn" onClick={openAddModal}>
+                + Add Expense
+              </button>
+            </div>
+          ) : (
+            expenses.map((exp) => (
+              <div className="mobile-tx-card" key={exp.id}>
+                <div className="mobile-tx-avatar" style={{ backgroundColor: "#fef2f2" }}>
+                  <span className="mobile-tx-icon">{exp.category_icon || "💳"}</span>
+                </div>
+                <div className="mobile-tx-info">
+                  <strong className="mobile-tx-title">{exp.description}</strong>
+                  <div className="mobile-tx-meta">
+                    <span className="mobile-tx-cat">{exp.category_name}</span>
+                    <span className="mobile-tx-dot">•</span>
+                    <span className="mobile-tx-date">{exp.transaction_date}</span>
+                    {exp.payment_method && (
+                      <>
+                        <span className="mobile-tx-dot">•</span>
+                        <span className="mobile-tx-payment">{exp.payment_method}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="mobile-tx-right">
+                  <span className="mobile-tx-amount expense">
+                    -₹{exp.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </span>
+                  <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      style={{ width: "28px", height: "28px" }}
+                      onClick={() => openEditModal(exp)}
+                      title="Edit"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      style={{ width: "28px", height: "28px", color: "#dc2626" }}
+                      onClick={() => handleDelete(exp.id)}
+                      title="Delete"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Detailed Table */}
+        <div className="desktop-table-container">
+          <div className="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", padding: "32px", color: "#8a90a2" }}>
-                    {loading ? "Loading expenses..." : "No expenses match the filter criteria."}
-                  </td>
+                  <th>TRANSACTION</th>
+                  <th>CATEGORY</th>
+                  <th>DATE</th>
+                  <th>PAYMENT METHOD</th>
+                  <th>AMOUNT</th>
+                  <th>ACTIONS</th>
                 </tr>
-              ) : (
-                expenses.map((exp) => (
-                  <tr key={exp.id}>
-                    <td>
-                      <div className="transaction-name">
-                        <span className="transaction-emoji">{exp.category_icon}</span>
-                        <strong>{exp.description}</strong>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="payment-badge">
-                        {exp.category_name}
-                      </span>
-                    </td>
-                    <td>{exp.transaction_date}</td>
-                    <td>
-                      <span className="payment-badge" style={{ background: "#ede7f6", color: "#673ab7" }}>
-                        {exp.payment_method}
-                      </span>
-                    </td>
-                    <td className="amount" style={{ color: "#d32f2f", fontWeight: "700" }}>
-                      -₹{exp.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: "6px" }}>
-                        <button
-                          className="secondary-button"
-                          style={{ padding: "6px 8px" }}
-                          onClick={() => openEditModal(exp)}
-                          title="Edit Expense"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          className="delete-row-btn"
-                          onClick={() => handleDelete(exp.id)}
-                          title="Delete Expense"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+              </thead>
+              <tbody>
+                {expenses.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: "center", padding: "32px", color: "#8a90a2" }}>
+                      {loading ? "Loading expenses..." : "No expenses match the filter criteria."}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  expenses.map((exp) => (
+                    <tr key={exp.id}>
+                      <td>
+                        <div className="transaction-name">
+                          <span className="transaction-emoji">{exp.category_icon}</span>
+                          <strong>{exp.description}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="payment-badge">
+                          {exp.category_name}
+                        </span>
+                      </td>
+                      <td>{exp.transaction_date}</td>
+                      <td>
+                        <span className="payment-badge" style={{ background: "#ede7f6", color: "#673ab7" }}>
+                          {exp.payment_method}
+                        </span>
+                      </td>
+                      <td className="amount" style={{ color: "#d32f2f", fontWeight: "700" }}>
+                        -₹{exp.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button
+                            className="secondary-button"
+                            style={{ padding: "6px 8px" }}
+                            onClick={() => openEditModal(exp)}
+                            title="Edit Expense"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            className="delete-row-btn"
+                            onClick={() => handleDelete(exp.id)}
+                            title="Delete Expense"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

@@ -2341,3 +2341,1161 @@ tbody tr:last-child td {
   padding: 3px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
+
+
+/* ==========================================================================
+   MOBILE-FIRST EXPENSE MANAGEMENT APP STYLES (Human-Friendly Mobile UI)
+   ========================================================================== */
+
+/* 1. Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-bottom-nav-inner {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 6px 8px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s ease, transform 0.15s ease;
+    flex: 1;
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav-item:active {
+    transform: scale(0.92);
+  }
+
+  .bottom-nav-item.active {
+    color: #4f46e5;
+  }
+
+  .bottom-nav-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2px;
+  }
+
+  .bottom-nav-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: -0.1px;
+  }
+
+  .bottom-nav-item.active .bottom-nav-label {
+    font-weight: 700;
+  }
+
+  .bottom-nav-indicator {
+    position: absolute;
+    bottom: 0;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #4f46e5;
+  }
+
+  /* Center Floating Action Button (FAB) */
+  .bottom-nav-fab {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav-fab-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.45);
+    transform: translateY(-14px);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+    border: 3px solid #ffffff;
+  }
+
+  .bottom-nav-fab:active .bottom-nav-fab-circle {
+    transform: translateY(-10px) scale(0.94);
+    box-shadow: 0 3px 8px rgba(79, 70, 229, 0.35);
+  }
+
+  /* Ensure page content has bottom padding so nav never overlaps */
+  .page-content {
+    padding-bottom: 96px !important;
+  }
+}
+
+/* 2. Mobile Quick Action Bottom Sheet */
+.mobile-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeInSheet 0.2s ease-out;
+}
+
+@keyframes fadeInSheet {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mobile-sheet-card {
+  background: #ffffff;
+  width: 100%;
+  max-width: 500px;
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.16);
+  animation: slideUpSheet 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.mobile-sheet-handle {
+  width: 44px;
+  height: 5px;
+  background: #cbd5e1;
+  border-radius: 3px;
+  margin: 4px auto 14px;
+}
+
+.mobile-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.sheet-title-group h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 2px;
+}
+
+.sheet-title-group p {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.sheet-close-btn,
+.sheet-back-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sheet-back-btn {
+  width: auto;
+  border-radius: 20px;
+  padding: 6px 12px 6px 6px;
+  display: flex;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sheet-close-btn:hover,
+.sheet-back-btn:hover {
+  background: #e2e8f0;
+}
+
+.sheet-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sheet-action-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 16px;
+  border-radius: 18px;
+  border: 1px solid #f1f5f9;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  min-height: 64px;
+}
+
+.sheet-action-item:hover,
+.sheet-action-item:active {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.sheet-action-item.expense-theme:hover {
+  border-color: #fecdd3;
+  background: #fff1f2;
+}
+
+.sheet-action-item.income-theme:hover {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.sheet-action-item.group-theme:hover {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+}
+
+.sheet-action-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.expense-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.income-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.group-icon {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.sheet-action-info {
+  flex: 1;
+}
+
+.sheet-action-info strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.sheet-action-info span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.sheet-action-arrow {
+  color: #94a3b8;
+}
+
+/* Quick Sheet Form Styles */
+.sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sheet-form-header {
+  margin-bottom: 6px;
+}
+
+.sheet-form-header h4 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.sheet-tagline {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.form-group-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group-mobile label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.mobile-amount-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 8px 16px;
+  transition: border-color 0.2s ease;
+}
+
+.mobile-amount-input-wrap:focus-within {
+  border-color: #4f46e5;
+  background: #ffffff;
+}
+
+.currency-prefix {
+  font-size: 26px;
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 6px;
+}
+
+.mobile-amount-input {
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e293b;
+  width: 100%;
+  outline: none;
+}
+
+.mobile-text-input,
+.mobile-select-input {
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  font-size: 15px;
+  color: #1e293b;
+  background: #ffffff;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mobile-text-input:focus,
+.mobile-select-input:focus {
+  border-color: #4f46e5;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sheet-primary-btn {
+  height: 50px;
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.sheet-primary-btn.income-submit {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
+}
+
+.sheet-primary-btn:active {
+  transform: scale(0.98);
+}
+
+.sheet-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sheet-error-banner {
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+/* 3. Hero Financial Wallet Card (Modern Consumer App Style) */
+.mobile-dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.finance-hero-card {
+  background: linear-gradient(135deg, #3730a3 0%, #4f46e5 50%, #6366f1 100%);
+  border-radius: 24px;
+  padding: 22px 22px 20px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 28px -6px rgba(79, 70, 229, 0.38);
+}
+
+.hero-card-glow {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.hero-balance-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.hero-wallet-icon {
+  color: #a5b4fc;
+}
+
+.hero-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.hero-status-pill.healthy {
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+  border: 1px solid rgba(134, 239, 172, 0.4);
+}
+
+.hero-status-pill.deficit {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border: 1px solid rgba(252, 165, 165, 0.4);
+}
+
+.hero-balance-display {
+  margin-bottom: 18px;
+}
+
+.hero-balance-number {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin: 0 0 2px;
+  line-height: 1.15;
+}
+
+.hero-net-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0;
+}
+
+.hero-cashflow-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.cashflow-pill {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.cashflow-icon-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.cashflow-icon-circle.green {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.cashflow-icon-circle.orange {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.cashflow-data {
+  display: flex;
+  flex-direction: column;
+}
+
+.cashflow-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.cashflow-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.hero-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.hero-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  cursor: pointer;
+  height: 44px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hero-action-btn:active {
+  transform: scale(0.96);
+}
+
+.hero-action-btn.primary-action {
+  background: #ffffff;
+  color: #3730a3;
+  border: none;
+  flex: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.hero-action-btn.secondary-action {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  flex: 1;
+}
+
+/* 4. Time Period Pills Bar */
+.period-pills-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.period-pills-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.period-pills-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.period-pill-btn {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 38px;
+}
+
+.period-pill-btn:hover {
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.period-pill-btn.active {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.custom-dates-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.filter-date-input {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.date-separator {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 5. Monthly Budget Glance Card */
+.budget-glance-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.budget-glance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.budget-glance-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: grid;
+  place-items: center;
+}
+
+.budget-glance-title h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.budget-glance-title p {
+  font-size: 12px;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.budget-config-link {
+  background: transparent;
+  border: none;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.budget-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.budget-progress-track {
+  height: 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.budget-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.budget-progress-fill.healthy {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.budget-progress-fill.warning {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.budget-progress-fill.danger {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.budget-progress-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.budget-empty-glance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.set-budget-btn {
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 6. Category Spending Pills (Human Visual Feed) */
+.category-chips-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-header-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header-compact h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.section-subtext {
+  font-size: 12px;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.section-sub-count {
+  font-size: 12px;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.category-chips-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.category-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.category-chip-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 8px 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.category-chip-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.category-chip-name {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.category-chip-amount {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* 7. Consumer-Friendly Recent Activity Feed */
+.recent-activity-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.view-all-link {
+  background: transparent;
+  border: none;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.mobile-tx-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-tx-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 16px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 60px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-tx-card:active {
+  transform: scale(0.98);
+  background: #f8fafc;
+}
+
+.mobile-tx-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.mobile-tx-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-tx-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-tx-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-tx-dot {
+  color: #cbd5e1;
+}
+
+.mobile-tx-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.mobile-tx-amount {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.mobile-tx-amount.income {
+  color: #16a34a;
+}
+
+.mobile-tx-amount.expense {
+  color: #dc2626;
+}
+
+.mobile-tx-status {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.empty-tx-mobile {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 18px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.empty-tx-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.empty-tx-mobile h5 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 4px;
+}
+
+.empty-tx-mobile p {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0 0 16px;
+}
+
+.empty-add-btn {
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Visibility rules between mobile feed and desktop table */
+@media (min-width: 769px) {
+  .mobile-tx-feed {
+    display: none;
+  }
+
+  .desktop-table-container {
+    display: block;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-tx-feed {
+    display: flex;
+  }
+
+  .desktop-table-container {
+    display: none;
+  }
+}
+
+/* 8. Collapsible Charts & Trends Section */
+.charts-accordion-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.charts-toggle-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 12px 16px;
+  cursor: pointer;
+  color: #334155;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.charts-toggle-btn:hover {
+  background: #f8fafc;
+}
+
+.toggle-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1e293b;
+}
+
+.toggle-indicator {
+  font-size: 12px;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.charts-grid-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 900px) {
+  .charts-grid-wrapper {
+    grid-template-columns: 1.6fr 1fr;
+  }
+}
+
+
+/* Mobile Bottom Sheet Styling for all existing modals */
+@media (max-width: 768px) {
+  .modal-overlay,
+  .modal-backdrop {
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    z-index: 2100 !important;
+  }
+
+  .expense-modal,
+  .modal-card,
+  .auth-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-top-left-radius: 26px !important;
+    border-top-right-radius: 26px !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px)) 20px !important;
+    margin: 0 !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    animation: slideUpSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .expense-modal input,
+  .expense-modal select,
+  .expense-modal textarea,
+  .modal-card input,
+  .modal-card select,
+  .auth-form-card input,
+  .auth-form-card select {
+    font-size: 16px !important; /* Prevents auto-zoom on mobile browsers */
+    min-height: 46px !important;
+    border-radius: 12px !important;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .modal-submit {
+    min-height: 46px !important;
+    font-size: 15px !important;
+    border-radius: 12px !important;
+  }
+}

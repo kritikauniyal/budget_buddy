@@ -55,3 +55,4 @@ export default function BottomNav({ activePage, onNavigate, onQuickAdd }) {
     </nav>
   );
 }
+

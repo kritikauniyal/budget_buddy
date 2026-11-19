@@ -1,4 +1,9 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : import.meta.env.PROD
+    ? ""
+    : "http://127.0.0.1:8000";
 
 // Standard request helper with JSON parsing and error handling
 async function request(endpoint, options = {}) {
@@ -14,7 +19,11 @@ async function request(endpoint, options = {}) {
   try {
     response = await fetch(url, { ...options, headers });
   } catch (err) {
-    throw new Error("Backend server is not running on port 8000. Please start your backend using 'python run.py' in the backend folder.");
+    throw new Error(
+      import.meta.env.PROD
+        ? "Unable to connect to the backend server. Please verify your connection or try refreshing."
+        : "Backend server is not running on port 8000. Please start your backend using 'python run.py' in the backend folder."
+    );
   }
 
   if (!response.ok) {
@@ -359,6 +368,12 @@ export const api = {
 
   getGroupInvitations: async (groupId) => {
     return await request(`/api/invitations/group/${groupId}`);
+  },
+
+  getGroupShareLink: async (groupId) => {
+    return await request(`/api/invitations/group/${groupId}/link`, {
+      method: "POST",
+    });
   },
 
   getMyPendingInvitations: async () => {

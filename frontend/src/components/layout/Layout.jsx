@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import BottomNav from "./BottomNav";
+import QuickActionSheet from "../common/QuickActionSheet";
 import { CheckCircle2 } from "lucide-react";
 
 export default function Layout({
@@ -17,6 +19,7 @@ export default function Layout({
   children
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [quickSheetOpen, setQuickSheetOpen] = useState(false);
 
   return (
     <div className="app-container">
@@ -56,6 +59,24 @@ export default function Layout({
             <span>Professional Personal Expense & Budget Management System</span>
           </div>
         </div>
+
+        {/* Mobile Native Bottom Navigation Bar */}
+        <BottomNav
+          activePage={activePage}
+          onNavigate={(page) => {
+            setActivePage(page);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onQuickAdd={() => setQuickSheetOpen(true)}
+        />
+
+        {/* Mobile Quick Action Bottom Sheet */}
+        <QuickActionSheet
+          isOpen={quickSheetOpen}
+          onClose={() => setQuickSheetOpen(false)}
+          onNavigate={setActivePage}
+          onExpenseAdded={onRefresh}
+        />
       </main>
     </div>
   );

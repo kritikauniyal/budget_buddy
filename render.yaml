@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: budget-buddy
+    env: python
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+

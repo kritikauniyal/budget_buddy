@@ -10,3 +10,5 @@ pyjwt[crypto]>=2.8.0
 python-multipart
 reportlab
 openpyxl
+email-validator
+cryptography

@@ -9,6 +9,8 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
   const [phone, setPhone] = useState("");
 
   const [existingInvites, setExistingInvites] = useState([]);
+  const [universalInvite, setUniversalInvite] = useState(null);
+  const [useNetworkIp, setUseNetworkIp] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedToken, setCopiedToken] = useState(null);
@@ -26,8 +28,30 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
   useEffect(() => {
     if (group && group.id) {
       loadExistingInvites();
+      api.getGroupShareLink(group.id)
+        .then((data) => setUniversalInvite(data))
+        .catch((err) => console.warn("Could not load share link:", err));
     }
   }, [group]);
+
+  const formatShareUrl = (token) => {
+    if (!token) return "";
+    if (useNetworkIp) {
+      return `http://192.168.1.9:5173/?invite=${token}`;
+    }
+    const host = window.location.hostname === "localhost" ? "127.0.0.1" : window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : "";
+    return `http://${host}${port}/?invite=${token}`;
+  };
+
+  const getWhatsAppShareUrl = (token, phoneVal = "") => {
+    const cleanPhone = phoneVal ? phoneVal.replace(/[^0-9]/g, "") : "";
+    const link = formatShareUrl(token);
+    const msg = `👋 Hi! Join our group '${group.name}' on Budget Buddy to share expenses and split bills!\n\n👉 Click this link to join:\n${link}`;
+    return cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  };
 
   // Contact Picker API
   const handleImportContacts = async () => {
@@ -96,22 +120,24 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
     }
   };
 
-  const handleCopyLink = (inviteLink, token) => {
-    navigator.clipboard.writeText(inviteLink);
+  const handleCopyLink = (token) => {
+    const url = formatShareUrl(token);
+    navigator.clipboard.writeText(url);
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2500);
   };
 
   const handleNativeShare = (invite) => {
-    const text = `Join my group '${group.name}' on Budget Buddy to share expenses and track balances! Click here: ${invite.invite_link}`;
+    const url = formatShareUrl(invite.token);
+    const text = `Join my group '${group.name}' on Budget Buddy to share expenses and track balances! Click here:\n${url}`;
     if (navigator.share) {
       navigator.share({
         title: `Join ${group.name} on Budget Buddy`,
         text,
-        url: invite.invite_link,
+        url,
       }).catch(() => {});
     } else {
-      handleCopyLink(invite.invite_link, invite.token);
+      handleCopyLink(invite.token);
     }
   };
 
@@ -162,6 +188,95 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
         )}
 
         <div className="modal-body" style={{ maxHeight: "68vh", overflowY: "auto", padding: "18px 20px" }}>
+          {/* Universal WhatsApp & Direct Share Link Card */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(37, 211, 102, 0.08), rgba(117, 87, 232, 0.08))",
+            border: "1px solid rgba(37, 211, 102, 0.35)",
+            borderRadius: "12px",
+            padding: "14px 16px",
+            marginBottom: "18px"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: "#25D366", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                  <MessageSquare size={16} />
+                </div>
+                <div>
+                  <strong style={{ fontSize: "0.92rem", color: "#0f172a", display: "block" }}>Quick Group Invite Link</strong>
+                  <span style={{ fontSize: "0.76rem", color: "#64748b" }}>Anyone with this link can tap to join {group.name}</span>
+                </div>
+              </div>
+
+              {/* Host/IP mode selector */}
+              <button
+                type="button"
+                onClick={() => setUseNetworkIp(!useNetworkIp)}
+                style={{
+                  background: useNetworkIp ? "#e0f2fe" : "#f1f5f9",
+                  color: useNetworkIp ? "#0369a1" : "#475569",
+                  border: "1px solid",
+                  borderColor: useNetworkIp ? "#bae6fd" : "#cbd5e1",
+                  borderRadius: "6px",
+                  fontSize: "0.72rem",
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                  fontWeight: 600
+                }}
+                title={useNetworkIp ? "Using Wi-Fi LAN IP (192.168.1.9) so phones can open the link" : "Using Localhost (127.0.0.1)"}
+              >
+                {useNetworkIp ? "📱 Mobile Wi-Fi Link (192.168.1.9)" : "💻 PC Link (127.0.0.1)"}
+              </button>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "10px", flexWrap: "wrap" }}>
+              <input
+                type="text"
+                readOnly
+                value={formatShareUrl(universalInvite?.token || "")}
+                style={{
+                  flex: "1 1 200px",
+                  fontSize: "0.82rem",
+                  padding: "8px 12px",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  color: "#334155"
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => handleCopyLink(universalInvite?.token)}
+                className="secondary-button"
+                style={{ padding: "8px 12px", minWidth: "auto", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              >
+                {copiedToken === universalInvite?.token ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                <span>{copiedToken === universalInvite?.token ? "Copied!" : "Copy Link"}</span>
+              </button>
+
+              <a
+                href={getWhatsAppShareUrl(universalInvite?.token || "")}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#25D366",
+                  color: "#ffffff",
+                  padding: "8px 14px",
+                  borderRadius: "8px",
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                  boxShadow: "0 2px 6px rgba(37, 211, 102, 0.25)"
+                }}
+              >
+                <MessageSquare size={16} />
+                <span>Send via WhatsApp</span>
+              </a>
+            </div>
+          </div>
+
           {/* Top Actions: Import Contacts */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
             <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Add by Phone or Email</span>
@@ -276,10 +391,12 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
             {existingInvites.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {existingInvites.map((inv) => {
-                  const shareText = `Hey! Join my group '${group.name}' on Budget Buddy to share expenses: ${inv.invite_link}`;
-                  const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-                  const mailUrl = `mailto:${inv.invitee_email || ""}?subject=${encodeURIComponent(`Join ${group.name} on Budget Buddy`)}&body=${encodeURIComponent(shareText)}`;
-                  const smsUrl = `sms:${inv.invitee_phone || ""}?body=${encodeURIComponent(shareText)}`;
+                  const inviteUrl = formatShareUrl(inv.token);
+                  const waUrl = getWhatsAppShareUrl(inv.token, inv.invitee_phone);
+                  const mailSubject = `Join ${group.name} on Budget Buddy`;
+                  const mailBody = `Hey! Join my group '${group.name}' on Budget Buddy to share expenses and split bills:\n\n${inviteUrl}`;
+                  const mailUrl = `mailto:${inv.invitee_email || ""}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`;
+                  const smsUrl = `sms:${inv.invitee_phone || ""}?body=${encodeURIComponent(mailBody)}`;
 
                   return (
                     <div
@@ -385,7 +502,7 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
                         {/* Copy Link */}
                         <button
                           type="button"
-                          onClick={() => handleCopyLink(inv.invite_link, inv.token)}
+                          onClick={() => handleCopyLink(inv.token)}
                           style={{
                             display: "inline-flex",
                             alignItems: "center",

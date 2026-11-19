@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Users, CheckCircle2 } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard/Dashboard";
@@ -38,22 +39,26 @@ function MainApp() {
   const [categoryData, setCategoryData] = useState([]);
   const [transactions, setTransactions] = useState([]);
 
-  // Check URL invitation tokens for logged-in users
-  useEffect(() => {
-    if (isAuthenticated) {
-      const token = new URLSearchParams(window.location.search).get("invite");
-      if (token) {
-        api.acceptInvitation(token)
-          .then((res) => {
-            alert(`🎉 Success! You've joined ${res.group_name}!`);
-            window.history.replaceState({}, document.title, window.location.pathname);
-            setActivePage("Groups");
-          })
-          .catch((err) => {
-            console.warn("Auto-accept invite error:", err);
-          });
-      }
+  // Invitation Flow State
+  const [pendingInvite, setPendingInvite] = useState(null);
+  const [joiningInvite, setJoiningInvite] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSuccessMsg, setInviteSuccessMsg] = useState("");
 
+  // Check URL invitation token
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("invite");
+    if (token) {
+      api.inspectInvitation(token)
+        .then((data) => {
+          setPendingInvite(data);
+        })
+        .catch((err) => {
+          console.warn("Could not inspect invitation:", err);
+        });
+    }
+
+    if (isAuthenticated) {
       // Check onboarding state
       const seen = localStorage.getItem("budget_buddy_onboarding_done");
       if (!seen) {
@@ -228,6 +233,85 @@ function MainApp() {
       >
         {renderActiveModule()}
       </Layout>
+
+      {/* Dedicated Join Group Invitation Prompt */}
+      {pendingInvite && (
+        <div className="modal-backdrop">
+          <div className="modal-card" style={{ maxWidth: "480px", textAlign: "center", padding: "28px 24px" }}>
+            <div style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: "rgba(117, 87, 232, 0.12)",
+              color: "#7557E8",
+              display: "grid",
+              placeItems: "center",
+              margin: "0 auto 16px"
+            }}>
+              <Users size={28} />
+            </div>
+
+            <h2 style={{ fontSize: "1.35rem", fontWeight: 700, marginBottom: "6px" }}>
+              Join "{pendingInvite.group_name}"?
+            </h2>
+
+            <p style={{ color: "#64748b", fontSize: "0.88rem", lineHeight: 1.5, marginBottom: "18px" }}>
+              <strong>{pendingInvite.invited_by_name}</strong> invited you to join their <strong>{pendingInvite.group_type}</strong> group on Budget Buddy to share expenses and split balances.
+            </p>
+
+            {inviteError && (
+              <div className="auth-alert error" style={{ marginBottom: "16px", textAlign: "left" }}>
+                <span>{inviteError}</span>
+              </div>
+            )}
+
+            {inviteSuccessMsg ? (
+              <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "12px", borderRadius: "10px", fontWeight: 600, marginBottom: "16px" }}>
+                {inviteSuccessMsg}
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "10px" }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    setPendingInvite(null);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                  }}
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled={joiningInvite}
+                  onClick={async () => {
+                    setJoiningInvite(true);
+                    setInviteError("");
+                    try {
+                      const res = await api.acceptInvitation(pendingInvite.token);
+                      setInviteSuccessMsg(`🎉 You've successfully joined ${res.group_name}!`);
+                      window.history.replaceState({}, document.title, window.location.pathname);
+                      setTimeout(() => {
+                        setPendingInvite(null);
+                        setSelectedGroupId(res.group_id);
+                        setActivePage("Groups");
+                      }, 1000);
+                    } catch (err) {
+                      setInviteError(err.message || "Could not accept invitation.");
+                    } finally {
+                      setJoiningInvite(false);
+                    }
+                  }}
+                >
+                  <CheckCircle2 size={16} />
+                  <span>{joiningInvite ? "Joining..." : "Accept & Join Group"}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Onboarding Modal for New Sessions */}
       {showOnboarding && (

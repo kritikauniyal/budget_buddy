@@ -33,6 +33,7 @@ function MainApp() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [groupExpenseTrigger, setGroupExpenseTrigger] = useState(0);
 
   const [dashboardSummary, setDashboardSummary] = useState({});
   const [stats, setStats] = useState([]);
@@ -175,6 +176,7 @@ function MainApp() {
             currentUser={user}
             selectedGroupId={selectedGroupId}
             onSelectGroup={setSelectedGroupId}
+            externalAddTrigger={groupExpenseTrigger}
           />
         );
       case "Income":
@@ -233,6 +235,7 @@ function MainApp() {
         onOpenAuth={() => {}}
         selectedGroupId={selectedGroupId}
         onSelectGroup={setSelectedGroupId}
+        onTriggerGroupExpense={() => setGroupExpenseTrigger((prev) => prev + 1)}
       >
         {renderActiveModule()}
       </Layout>

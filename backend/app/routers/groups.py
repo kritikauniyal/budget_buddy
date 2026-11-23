@@ -667,6 +667,7 @@ def get_group_expenses(
                 expense_date=e.expense_date.strftime("%b %d, %Y"),
                 payment_method=e.payment_method,
                 description=e.description,
+                receipt_url=e.receipt_url,
                 splits=splits_by_exp.get(e.id, []),
                 created_at=e.created_at.strftime("%b %d, %Y")
             )
@@ -713,59 +714,17 @@ def add_group_expense(
         except Exception:
             pass
 
-    # Create GroupExpense
-    new_expense = GroupExpense(
-        group_id=group_id,
-        paid_by=payer_id,
-        category_id=category_id,
-        title=expense_in.title.strip(),
-        amount=total_amount,
-        split_type=expense_in.split_type or "equal",
-        expense_date=exp_date,
-        payment_method=expense_in.payment_method or "UPI",
-        description=expense_in.description
-    )
-    db.add(new_expense)
-    db.commit()
-    db.refresh(new_expense)
-
-    # Calculate splits
+    # Pre-validate splits BEFORE inserting expense to guarantee transactional consistency
     all_members = db.query(GroupMember).filter(
         GroupMember.group_id == group_id,
         GroupMember.status == "active"
     ).all()
     all_member_ids = [m.user_id for m in all_members]
 
-    split_objects = []
-
-    if new_expense.split_type == "equal":
-        # If participants specified, split only among them; else all members
-        participants = expense_in.participant_ids if expense_in.participant_ids else all_member_ids
-        participants = [p for p in participants if p in all_member_ids]
-        if not participants:
-            participants = all_member_ids
-
-        n = len(participants)
-        base_share = (total_amount / Decimal(n)).quantize(Decimal("0.01"))
-        # Adjust remainder cents on the first participant
-        remainder = total_amount - (base_share * Decimal(n))
-
-        for idx, uid in enumerate(participants):
-            share = base_share + (remainder if idx == 0 else Decimal("0.00"))
-            split_obj = GroupExpenseSplit(
-                group_expense_id=new_expense.id,
-                user_id=uid,
-                owed_amount=share,
-                percentage=(Decimal("100.00") / Decimal(n)).quantize(Decimal("0.01")),
-                is_settled=False
-            )
-            split_objects.append(split_obj)
-            db.add(split_obj)
-
-    elif new_expense.split_type == "custom":
+    req_split_type = expense_in.split_type or "equal"
+    if req_split_type == "custom":
         if not expense_in.splits:
             raise HTTPException(status_code=400, detail="Custom splits must be specified")
-
         split_sum = sum(Decimal(str(s.owed_amount)) for s in expense_in.splits)
         if abs(split_sum - total_amount) > Decimal("0.05"):
             raise HTTPException(
@@ -773,32 +732,79 @@ def add_group_expense(
                 detail=f"Sum of custom splits (₹{split_sum}) must equal total expense amount (₹{total_amount})"
             )
 
-        for s in expense_in.splits:
-            pct = (Decimal(str(s.owed_amount)) / total_amount * Decimal("100.00")).quantize(Decimal("0.01")) if total_amount > 0 else Decimal("0.00")
+    try:
+        # Create GroupExpense
+        new_expense = GroupExpense(
+            group_id=group_id,
+            paid_by=payer_id,
+            category_id=category_id,
+            title=expense_in.title.strip(),
+            amount=total_amount,
+            split_type=req_split_type,
+            expense_date=exp_date,
+            payment_method=expense_in.payment_method or "UPI",
+            description=expense_in.description,
+            receipt_url=expense_in.receipt_url
+        )
+        db.add(new_expense)
+        db.flush()  # Generates new_expense.id without committing transaction
+
+        split_objects = []
+
+        if req_split_type == "equal":
+            participants = expense_in.participant_ids if expense_in.participant_ids else all_member_ids
+            participants = [p for p in participants if p in all_member_ids]
+            if not participants:
+                participants = all_member_ids
+
+            n = len(participants)
+            base_share = (total_amount / Decimal(n)).quantize(Decimal("0.01"))
+            remainder = total_amount - (base_share * Decimal(n))
+
+            for idx, uid in enumerate(participants):
+                share = base_share + (remainder if idx == 0 else Decimal("0.00"))
+                split_obj = GroupExpenseSplit(
+                    group_expense_id=new_expense.id,
+                    user_id=uid,
+                    owed_amount=share,
+                    percentage=(Decimal("100.00") / Decimal(n)).quantize(Decimal("0.01")),
+                    is_settled=False
+                )
+                split_objects.append(split_obj)
+                db.add(split_obj)
+
+        elif req_split_type == "custom":
+            for s in expense_in.splits:
+                pct = (Decimal(str(s.owed_amount)) / total_amount * Decimal("100.00")).quantize(Decimal("0.01")) if total_amount > 0 else Decimal("0.00")
+                split_obj = GroupExpenseSplit(
+                    group_expense_id=new_expense.id,
+                    user_id=s.user_id,
+                    owed_amount=Decimal(str(s.owed_amount)),
+                    percentage=pct,
+                    is_settled=False
+                )
+                split_objects.append(split_obj)
+                db.add(split_obj)
+
+        elif req_split_type == "single":
+            single_uid = expense_in.participant_ids[0] if (expense_in.participant_ids and len(expense_in.participant_ids) > 0) else payer_id
             split_obj = GroupExpenseSplit(
                 group_expense_id=new_expense.id,
-                user_id=s.user_id,
-                owed_amount=Decimal(str(s.owed_amount)),
-                percentage=pct,
+                user_id=single_uid,
+                owed_amount=total_amount,
+                percentage=Decimal("100.00"),
                 is_settled=False
             )
             split_objects.append(split_obj)
             db.add(split_obj)
 
-    elif new_expense.split_type == "single":
-        # Single member owes 100%
-        single_uid = expense_in.participant_ids[0] if (expense_in.participant_ids and len(expense_in.participant_ids) > 0) else payer_id
-        split_obj = GroupExpenseSplit(
-            group_expense_id=new_expense.id,
-            user_id=single_uid,
-            owed_amount=total_amount,
-            percentage=Decimal("100.00"),
-            is_settled=False
-        )
-        split_objects.append(split_obj)
-        db.add(split_obj)
-
-    db.commit()
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to record group expense: {str(e)}")
 
     # Create notifications for participants (excluding creator/payer)
     grp = db.query(Group).filter(Group.id == group_id).first()
@@ -843,6 +849,7 @@ def add_group_expense(
         expense_date=new_expense.expense_date.strftime("%b %d, %Y"),
         payment_method=new_expense.payment_method,
         description=new_expense.description,
+        receipt_url=new_expense.receipt_url,
         splits=splits_out,
         created_at=new_expense.created_at.strftime("%b %d, %Y")
     )

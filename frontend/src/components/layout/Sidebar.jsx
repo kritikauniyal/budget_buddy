@@ -90,17 +90,7 @@ export default function Sidebar({
 
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
-          <img
-            src="/api/logo.png"
-            alt="Budget Buddy"
-            className="sidebar-brand-logo"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              const fallback = document.getElementById('sidebar-fallback-icon');
-              if (fallback) fallback.style.display = 'grid';
-            }}
-          />
-          <div id="sidebar-fallback-icon" className="brand-icon" style={{ display: 'none' }}>
+          <div className="brand-icon">
             <Wallet size={24} />
           </div>
 

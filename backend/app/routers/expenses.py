@@ -18,6 +18,7 @@ class ExpenseInput(BaseModel):
     payment_method: Optional[str] = "Cash"
     description: Optional[str] = None
     transaction_date: Optional[str] = None
+    receipt_url: Optional[str] = None
 
 class ExpenseDetailOut(BaseModel):
     id: int
@@ -29,6 +30,7 @@ class ExpenseDetailOut(BaseModel):
     payment_method: str
     description: Optional[str]
     transaction_date: str
+    receipt_url: Optional[str] = None
 
 @router.get("", response_model=List[ExpenseDetailOut])
 def get_expenses(
@@ -67,7 +69,8 @@ def get_expenses(
                 category_color=cat.color if cat else "#7557E8",
                 payment_method=exp.payment_method or "Cash",
                 description=exp.description,
-                transaction_date=exp.transaction_date.strftime("%b %d, %Y")
+                transaction_date=exp.transaction_date.strftime("%b %d, %Y"),
+                receipt_url=exp.receipt_url
             )
         )
     return results
@@ -105,7 +108,8 @@ def create_expense_item(
         amount=item.amount,
         payment_method=item.payment_method or "Cash",
         description=item.description or (category.name if category else "Expense"),
-        transaction_date=tx_date
+        transaction_date=tx_date,
+        receipt_url=item.receipt_url
     )
     db.add(new_expense)
     db.commit()
@@ -120,7 +124,8 @@ def create_expense_item(
         category_color=category.color if category else "#7557E8",
         payment_method=new_expense.payment_method or "Cash",
         description=new_expense.description,
-        transaction_date=new_expense.transaction_date.strftime("%b %d, %Y")
+        transaction_date=new_expense.transaction_date.strftime("%b %d, %Y"),
+        receipt_url=new_expense.receipt_url
     )
 
 

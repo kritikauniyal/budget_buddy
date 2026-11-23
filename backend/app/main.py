@@ -20,7 +20,8 @@ from app.routers import (
     notifications,
     groups,
     invitations,
-    recurring
+    recurring,
+    uploads
 )
 
 # Relative directory paths
@@ -71,6 +72,7 @@ app.include_router(notifications.router)
 app.include_router(groups.router)
 app.include_router(invitations.router)
 app.include_router(recurring.router)
+app.include_router(uploads.router)
 
 @app.get("/api/logo.png", tags=["Branding"])
 def get_brand_logo():

@@ -1,5 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { X, Receipt, Check, AlertCircle, Percent, Hash, DollarSign, Users, UserCheck } from "lucide-react";
+import {
+  X,
+  Receipt,
+  Check,
+  AlertCircle,
+  Percent,
+  Hash,
+  DollarSign,
+  Users,
+  Calendar,
+  CreditCard,
+  UploadCloud,
+  FileText,
+  Image as ImageIcon,
+  Trash2,
+  Sparkles
+} from "lucide-react";
 import api from "../../services/api";
 
 const EXPENSE_CATEGORIES = [
@@ -18,67 +34,74 @@ const EXPENSE_CATEGORIES = [
   { name: "Other", icon: "📋", color: "#64748B" },
 ];
 
-export default function AddGroupExpenseModal({ groupId, members = [], currentUser, onClose, onExpenseAdded }) {
+export default function AddGroupExpenseModal({
+  groupId,
+  members = [],
+  currentUser,
+  onClose,
+  onExpenseAdded
+}) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryName, setCategoryName] = useState("Food");
-  const [paidBy, setPaidBy] = useState(currentUser ? currentUser.id : (members[0]?.user_id || 1));
+  const [paidBy, setPaidBy] = useState(
+    currentUser ? currentUser.id : (members[0]?.user_id || 1)
+  );
   const [paymentMethod, setPaymentMethod] = useState("UPI");
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split("T")[0]);
+  const [expenseDate, setExpenseDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [description, setDescription] = useState("");
 
-  // Split Types: 'equal' | 'exact' | 'percentage' | 'shares' | 'custom'
+  // Split Type: 'equal' (DEFAULT) | 'percentage' | 'exact' | 'shares'
   const [splitType, setSplitType] = useState("equal");
-  const [selectedParticipants, setSelectedParticipants] = useState(() => members.map((m) => m.user_id));
+  const [selectedParticipants, setSelectedParticipants] = useState(() =>
+    members.map((m) => m.user_id)
+  );
 
-  // Exact / Custom amounts
-  const [customSplits, setCustomSplits] = useState(() => {
-    const init = {};
-    members.forEach((m) => {
-      init[m.user_id] = "";
-    });
-    return init;
-  });
+  // Exact amounts input state (userId -> amount string)
+  const [customSplits, setCustomSplits] = useState({});
 
-  // Percentage inputs
-  const [percentSplits, setPercentSplits] = useState(() => {
-    const init = {};
-    const equalPct = members.length > 0 ? (100 / members.length).toFixed(1) : 0;
-    members.forEach((m) => {
-      init[m.user_id] = equalPct;
-    });
-    return init;
-  });
+  // Percentage inputs state (userId -> percentage string)
+  const [percentSplits, setPercentSplits] = useState({});
 
-  // Shares inputs (e.g. 1, 2, 1)
-  const [shareCounts, setShareCounts] = useState(() => {
-    const init = {};
-    members.forEach((m) => {
-      init[m.user_id] = "1";
-    });
-    return init;
-  });
+  // Shares inputs state (userId -> share count string)
+  const [shareCounts, setShareCounts] = useState({});
+
+  // Optional Payment Receipt / Proof Upload
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(null);
+  const [isPdf, setIsPdf] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Initialize splits when members change
   useEffect(() => {
     if (members.length > 0) {
       setSelectedParticipants(members.map((m) => m.user_id));
+
       const initC = {};
       const initP = {};
       const initS = {};
-      const eqP = (100 / members.length).toFixed(1);
+      // Calculate clean equal percentage distribution
+      const basePct = (100 / members.length).toFixed(1);
       members.forEach((m) => {
         initC[m.user_id] = "";
-        initP[m.user_id] = eqP;
+        initP[m.user_id] = basePct;
         initS[m.user_id] = "1";
       });
       setCustomSplits(initC);
       setPercentSplits(initP);
       setShareCounts(initS);
+
+      if (currentUser && members.some((m) => m.user_id === currentUser.id)) {
+        setPaidBy(currentUser.id);
+      } else if (members[0]) {
+        setPaidBy(members[0].user_id);
+      }
     }
-  }, [members]);
+  }, [members, currentUser]);
 
   const numAmount = parseFloat(amount) || 0;
 
@@ -86,7 +109,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
   const toggleParticipant = (userId) => {
     setSelectedParticipants((prev) => {
       if (prev.includes(userId)) {
-        if (prev.length === 1) return prev;
+        if (prev.length === 1) return prev; // Keep at least one
         return prev.filter((id) => id !== userId);
       } else {
         return [...prev, userId];
@@ -94,15 +117,58 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
     });
   };
 
-  // Calculations for custom/exact
-  const customSum = Object.values(customSplits).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-  const customDiff = numAmount - customSum;
+  // Calculations for Equal split
+  const activeCount = selectedParticipants.length;
+  const equalSharePerPerson =
+    activeCount > 0 ? (numAmount / activeCount).toFixed(2) : "0.00";
 
-  // Calculations for percentage
-  const totalPercent = Object.values(percentSplits).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  // Calculations for Exact split
+  const exactSum = selectedParticipants.reduce((sum, uid) => {
+    return sum + (parseFloat(customSplits[uid]) || 0);
+  }, 0);
+  const exactDiff = Math.round((numAmount - exactSum) * 100) / 100;
 
-  // Calculations for shares
-  const totalShares = Object.values(shareCounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  // Calculations for Percentage split
+  const totalPercent = selectedParticipants.reduce((sum, uid) => {
+    return sum + (parseFloat(percentSplits[uid]) || 0);
+  }, 0);
+  const roundedTotalPct = Math.round(totalPercent * 10) / 10;
+  const isPercentValid = Math.abs(roundedTotalPct - 100.0) <= 0.1;
+
+  // Calculations for Shares
+  const totalShares = selectedParticipants.reduce((sum, uid) => {
+    return sum + (parseFloat(shareCounts[uid]) || 0);
+  }, 0);
+
+  // File selection handler
+  const handleFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Receipt file size cannot exceed 10 MB.");
+      return;
+    }
+
+    setReceiptFile(file);
+    if (file.type === "application/pdf") {
+      setIsPdf(true);
+      setReceiptPreview(null);
+    } else {
+      setIsPdf(false);
+      setReceiptPreview(URL.createObjectURL(file));
+    }
+    setError("");
+  };
+
+  const handleRemoveReceipt = () => {
+    if (receiptPreview) {
+      URL.revokeObjectURL(receiptPreview);
+    }
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setIsPdf(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,7 +177,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
       return;
     }
     if (numAmount <= 0) {
-      setError("Please enter a valid amount greater than 0.");
+      setError("Please enter a valid amount greater than ₹0.");
       return;
     }
 
@@ -121,56 +187,61 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
     if (splitType === "equal") {
       participantIds = selectedParticipants;
       if (participantIds.length === 0) {
-        setError("Please select at least one participant.");
+        setError("Please select at least one member to split with.");
         return;
       }
-    } else if (splitType === "exact" || splitType === "custom") {
-      if (Math.abs(customDiff) > 0.05) {
-        setError(`Sum of splits (₹${customSum.toFixed(2)}) must match total amount (₹${numAmount.toFixed(2)}). Difference: ₹${customDiff.toFixed(2)}`);
-        return;
-      }
-      payloadSplits = members.map((m) => ({
-        user_id: m.user_id,
-        owed_amount: parseFloat(customSplits[m.user_id]) || 0,
-      }));
     } else if (splitType === "percentage") {
-      if (Math.abs(totalPercent - 100) > 0.1) {
-        setError(`Sum of percentages must equal 100%. Currently: ${totalPercent.toFixed(1)}%`);
+      if (!isPercentValid) {
+        setError(
+          `Total percentage must equal exactly 100%. Currently it is ${roundedTotalPct.toFixed(1)}%.`
+        );
         return;
       }
-      payloadSplits = members.map((m) => {
-        const pct = parseFloat(percentSplits[m.user_id]) || 0;
+      payloadSplits = selectedParticipants.map((uid) => {
+        const pct = parseFloat(percentSplits[uid]) || 0;
         const owed = Math.round(((numAmount * pct) / 100) * 100) / 100;
         return {
-          user_id: m.user_id,
+          user_id: uid,
           owed_amount: owed,
           percentage: pct,
         };
       });
-      // Adjust remainder cents
+      // Adjust small 1-cent rounding difference to payer or first member
       const calcTotal = payloadSplits.reduce((acc, curr) => acc + curr.owed_amount, 0);
       const diff = Math.round((numAmount - calcTotal) * 100) / 100;
       if (payloadSplits.length > 0 && diff !== 0) {
-        payloadSplits[0].owed_amount = Math.round((payloadSplits[0].owed_amount + diff) * 100) / 100;
+        payloadSplits[0].owed_amount =
+          Math.round((payloadSplits[0].owed_amount + diff) * 100) / 100;
       }
+    } else if (splitType === "exact") {
+      if (Math.abs(exactDiff) > 0.05) {
+        setError(
+          `Sum of member shares (₹${exactSum.toFixed(2)}) must equal total expense (₹${numAmount.toFixed(2)}). Difference: ₹${exactDiff.toFixed(2)}.`
+        );
+        return;
+      }
+      payloadSplits = selectedParticipants.map((uid) => ({
+        user_id: uid,
+        owed_amount: parseFloat(customSplits[uid]) || 0,
+      }));
     } else if (splitType === "shares") {
       if (totalShares <= 0) {
         setError("Total shares must be greater than 0.");
         return;
       }
-      payloadSplits = members.map((m) => {
-        const sh = parseFloat(shareCounts[m.user_id]) || 0;
+      payloadSplits = selectedParticipants.map((uid) => {
+        const sh = parseFloat(shareCounts[uid]) || 0;
         const owed = Math.round(((numAmount * sh) / totalShares) * 100) / 100;
         return {
-          user_id: m.user_id,
+          user_id: uid,
           owed_amount: owed,
         };
       });
-      // Adjust remainder cents
       const calcTotal = payloadSplits.reduce((acc, curr) => acc + curr.owed_amount, 0);
       const diff = Math.round((numAmount - calcTotal) * 100) / 100;
       if (payloadSplits.length > 0 && diff !== 0) {
-        payloadSplits[0].owed_amount = Math.round((payloadSplits[0].owed_amount + diff) * 100) / 100;
+        payloadSplits[0].owed_amount =
+          Math.round((payloadSplits[0].owed_amount + diff) * 100) / 100;
       }
     }
 
@@ -178,6 +249,16 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
     setError("");
 
     try {
+      // 1. Upload receipt if attached
+      let uploadedReceiptUrl = null;
+      if (receiptFile) {
+        const uploadRes = await api.uploadReceipt(receiptFile);
+        if (uploadRes && uploadRes.receipt_url) {
+          uploadedReceiptUrl = uploadRes.receipt_url;
+        }
+      }
+
+      // 2. Submit group expense
       await api.addGroupExpense(groupId, {
         title: title.trim(),
         amount: numAmount,
@@ -187,6 +268,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
         expense_date: expenseDate,
         payment_method: paymentMethod,
         description: description.trim() || null,
+        receipt_url: uploadedReceiptUrl,
         participant_ids: participantIds,
         splits: payloadSplits,
       });
@@ -196,13 +278,17 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
       }
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to add expense.");
+      setError(err.message || "Failed to record group expense.");
     } finally {
       setLoading(false);
     }
   };
 
-  const perPersonShare = selectedParticipants.length > 0 ? (numAmount / selectedParticipants.length).toFixed(2) : 0;
+  const getUserInitials = (name = "") => {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.slice(0, 2).toUpperCase() || "MB";
+  };
 
   return (
     <div
@@ -211,354 +297,550 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-card" style={{ maxWidth: "640px" }}>
+      <div className="modal-card group-expense-modal-card">
+        {/* Header */}
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div className="modal-icon-badge" style={{ background: "rgba(34, 184, 160, 0.12)", color: "#0d9488" }}>
+            <div
+              className="modal-icon-badge"
+              style={{ background: "#eff6ff", color: "#3b82f6" }}
+            >
               <Receipt size={22} />
             </div>
             <div>
-              <h3>Add Group Expense</h3>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-                Split this bill automatically across members
+              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
+                Add Group Expense
+              </h3>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "#64748b" }}>
+                Split fairly among members with automatic balances
               </p>
             </div>
           </div>
-          <button className="modal-close-btn" type="button" onClick={onClose}>
-            <X size={18} />
+          <button
+            type="button"
+            className="modal-close-button"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={20} />
           </button>
         </div>
 
         {error && (
-          <div className="auth-alert error" style={{ margin: "14px 20px 0" }}>
+          <div className="auth-alert error" style={{ margin: "16px 20px 0" }}>
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body" style={{ maxHeight: "68vh", overflowY: "auto", padding: "18px 20px" }}>
-            {/* Title & Amount */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "12px" }}>
-              <div className="form-group">
-                <label>Expense Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Grocery, Room Rent, Dinner"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>Total Amount (₹) *</label>
+        <form onSubmit={handleSubmit} className="modal-body">
+          {/* 1. Title & Amount */}
+          <div className="form-group-row">
+            <div className="form-group" style={{ flex: 2 }}>
+              <label>Expense Title *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Dinner, Grocery, Electricity"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+            <div className="form-group" style={{ flex: 1.3 }}>
+              <label>Amount (₹) *</label>
+              <div className="input-with-prefix">
+                <span className="input-prefix">₹</span>
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   min="0.01"
-                  required
+                  className="form-input prefix-padding"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  required
                 />
               </div>
             </div>
+          </div>
 
-            {/* Category & Date */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <div className="form-group">
-                <label>Category</label>
-                <select value={categoryName} onChange={(e) => setCategoryName(e.target.value)}>
-                  {EXPENSE_CATEGORIES.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.icon} {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Date</label>
+          {/* 2. Category Selection */}
+          <div className="form-group">
+            <label>Category</label>
+            <div className="category-scroll-chips">
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.name}
+                  type="button"
+                  className={`category-chip ${
+                    categoryName === cat.name ? "active" : ""
+                  }`}
+                  onClick={() => setCategoryName(cat.name)}
+                >
+                  <span className="cat-chip-icon">{cat.icon}</span>
+                  <span className="cat-chip-name">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 3. Paid By & Date */}
+          <div className="form-group-row">
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Paid By</label>
+              <select
+                className="form-input form-select"
+                value={paidBy}
+                onChange={(e) => setPaidBy(parseInt(e.target.value, 10))}
+              >
+                {members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.user_name} {currentUser?.id === m.user_id ? "(You)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Expense Date</label>
+              <div className="input-with-icon">
+                <Calendar size={16} className="input-icon-left" />
                 <input
                   type="date"
+                  className="form-input icon-padding-left"
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                 />
               </div>
             </div>
+          </div>
 
-            {/* Paid By & Payment Method */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
-              <div className="form-group">
-                <label>Paid By</label>
-                <select value={paidBy} onChange={(e) => setPaidBy(parseInt(e.target.value))}>
-                  {members.map((m) => (
-                    <option key={m.user_id} value={m.user_id}>
-                      {m.full_name} {currentUser && currentUser.id === m.user_id ? "(You)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Payment Method</label>
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                  <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Debit Card">Debit Card</option>
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Net Banking">Net Banking</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+          {/* 4. Split Type Selector */}
+          <div className="form-group">
+            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Split Type</span>
+              <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 500 }}>
+                {splitType === "equal" && "Default • Equal for all"}
+                {splitType === "percentage" && "Custom % per member"}
+                {splitType === "exact" && "Enter exact ₹ amounts"}
+                {splitType === "shares" && "Split by ratio/shares"}
+              </span>
+            </label>
+            <div className="split-type-pill-selector">
+              <button
+                type="button"
+                className={`split-pill ${splitType === "equal" ? "active" : ""}`}
+                onClick={() => setSplitType("equal")}
+              >
+                <DollarSign size={15} />
+                <span>Equal Split</span>
+              </button>
+              <button
+                type="button"
+                className={`split-pill ${splitType === "percentage" ? "active" : ""}`}
+                onClick={() => setSplitType("percentage")}
+              >
+                <Percent size={15} />
+                <span>Percentage</span>
+              </button>
+              <button
+                type="button"
+                className={`split-pill ${splitType === "exact" ? "active" : ""}`}
+                onClick={() => setSplitType("exact")}
+              >
+                <Hash size={15} />
+                <span>Exact ₹</span>
+              </button>
+              <button
+                type="button"
+                className={`split-pill ${splitType === "shares" ? "active" : ""}`}
+                onClick={() => setSplitType("shares")}
+              >
+                <Users size={15} />
+                <span>Shares</span>
+              </button>
             </div>
+          </div>
 
-            {/* 5 SPLIT OPTIONS SELECTOR */}
-            <div style={{ marginTop: "16px", borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
-              <label style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}>
-                Expense Split Options
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(105px, 1fr))", gap: "6px", marginBottom: "14px" }}>
-                {[
-                  { id: "equal", label: "⚖️ Equal" },
-                  { id: "exact", label: "💵 Exact ₹" },
-                  { id: "percentage", label: "📊 Percent %" },
-                  { id: "shares", label: "🔢 Shares" },
-                  { id: "custom", label: "✨ Custom" },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setSplitType(tab.id)}
-                    style={{
-                      padding: "8px 6px",
-                      borderRadius: "8px",
-                      border: splitType === tab.id ? "2px solid #7557E8" : "1px solid #e2e8f0",
-                      background: splitType === tab.id ? "rgba(117, 87, 232, 0.08)" : "#fff",
-                      color: splitType === tab.id ? "#7557E8" : "#334155",
-                      fontWeight: splitType === tab.id ? 700 : 500,
-                      cursor: "pointer",
-                      fontSize: "0.82rem",
-                      textAlign: "center"
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* 1. EQUAL SPLIT */}
-              {splitType === "equal" && (
-                <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", fontSize: "0.85rem" }}>
-                    <span>Included Members ({selectedParticipants.length}):</span>
-                    <span style={{ fontWeight: 700, color: "#7557E8" }}>
-                      ₹{perPersonShare} / person
+          {/* 5. Progressive Disclosure: Split Details Engine */}
+          <div className="split-config-container">
+            {/* EQUAL SPLIT (DEFAULT) */}
+            {splitType === "equal" && (
+              <div>
+                <div className="equal-split-summary-badge">
+                  <div className="equal-badge-icon">
+                    <Sparkles size={18} />
+                  </div>
+                  <div className="equal-badge-text">
+                    <strong>₹{equalSharePerPerson} per person</strong>
+                    <span>
+                      Divided equally between {activeCount} member{activeCount !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                </div>
+
+                <div style={{ marginTop: "12px" }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>
+                    Split between members:
+                  </span>
+                  <div className="member-checkbox-grid" style={{ marginTop: "8px" }}>
                     {members.map((m) => {
-                      const isSelected = selectedParticipants.includes(m.user_id);
+                      const isChecked = selectedParticipants.includes(m.user_id);
                       return (
-                        <button
+                        <div
                           key={m.user_id}
-                          type="button"
+                          className={`member-select-card ${isChecked ? "selected" : ""}`}
                           onClick={() => toggleParticipant(m.user_id)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            padding: "6px 10px",
-                            borderRadius: "20px",
-                            border: isSelected ? "1.5px solid #22B8A0" : "1px solid #cbd5e1",
-                            background: isSelected ? "rgba(34, 184, 160, 0.12)" : "#fff",
-                            color: isSelected ? "#0f766e" : "#64748b",
-                            fontSize: "0.82rem",
-                            cursor: "pointer",
-                            fontWeight: isSelected ? 600 : 400
-                          }}
                         >
-                          <div style={{
-                            width: "14px",
-                            height: "14px",
-                            borderRadius: "3px",
-                            background: isSelected ? "#22B8A0" : "#cbd5e1",
-                            display: "grid",
-                            placeItems: "center",
-                            color: "#fff"
-                          }}>
-                            {isSelected && <Check size={12} />}
+                          <div className="member-avatar-circle">
+                            {getUserInitials(m.user_name)}
                           </div>
-                          <span>{m.full_name}</span>
-                        </button>
+                          <div className="member-select-name">
+                            {m.user_name}
+                            {currentUser?.id === m.user_id ? " (You)" : ""}
+                          </div>
+                          <div className={`custom-checkbox ${isChecked ? "checked" : ""}`}>
+                            {isChecked && <Check size={14} color="#ffffff" />}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* 2. EXACT AMOUNT & 5. CUSTOM SPLIT */}
-              {(splitType === "exact" || splitType === "custom") && (
-                <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "0.84rem" }}>
-                    <span>Enter exact amount each person pays:</span>
-                    <span style={{
-                      fontWeight: 700,
-                      color: Math.abs(customDiff) < 0.05 ? "#10b981" : "#ef4444"
-                    }}>
-                      Total: ₹{customSum.toFixed(2)} / ₹{numAmount.toFixed(2)}
-                      {Math.abs(customDiff) >= 0.05 && ` (Diff: ₹${customDiff.toFixed(2)})`}
-                    </span>
+            {/* PERCENTAGE SPLIT */}
+            {splitType === "percentage" && (
+              <div>
+                <div
+                  className="split-status-bar"
+                  style={{
+                    background: isPercentValid ? "#f0fdf4" : "#fef2f2",
+                    borderColor: isPercentValid ? "#bbf7d0" : "#fecaca",
+                    color: isPercentValid ? "#166534" : "#991b1b",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {isPercentValid ? <Check size={16} /> : <AlertCircle size={16} />}
+                    <strong>Total: {roundedTotalPct.toFixed(1)}% / 100%</strong>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {members.map((m) => (
-                      <div
-                        key={m.user_id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "10px",
-                          fontSize: "0.85rem"
-                        }}
-                      >
-                        <span>{m.full_name}</span>
-                        <div style={{ position: "relative", width: "130px" }}>
-                          <span style={{ position: "absolute", left: "8px", top: "7px", color: "#64748b", fontSize: "0.85rem" }}>₹</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0.00"
-                            value={customSplits[m.user_id] || ""}
-                            onChange={(e) => setCustomSplits({ ...customSplits, [m.user_id]: e.target.value })}
-                            style={{ padding: "6px 8px 6px 22px", fontSize: "0.85rem", width: "100%" }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <span style={{ fontSize: "0.82rem" }}>
+                    {isPercentValid
+                      ? "Split is 100% balanced ✨"
+                      : roundedTotalPct < 100
+                      ? `${(100 - roundedTotalPct).toFixed(1)}% remaining`
+                      : `${(roundedTotalPct - 100).toFixed(1)}% over 100%`}
+                  </span>
                 </div>
-              )}
 
-              {/* 3. PERCENTAGE SPLIT */}
-              {splitType === "percentage" && (
-                <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "0.84rem" }}>
-                    <span>Assign percentage to each member:</span>
-                    <span style={{
-                      fontWeight: 700,
-                      color: Math.abs(totalPercent - 100) < 0.1 ? "#10b981" : "#ef4444"
-                    }}>
-                      Total: {totalPercent.toFixed(1)}% / 100%
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {members.map((m) => {
-                      const pct = parseFloat(percentSplits[m.user_id]) || 0;
-                      const calculatedOwed = ((numAmount * pct) / 100).toFixed(2);
-                      return (
-                        <div
-                          key={m.user_id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: "10px",
-                            fontSize: "0.85rem"
-                          }}
-                        >
-                          <div>
-                            <strong>{m.full_name}</strong>
-                            <span style={{ color: "#7557E8", marginLeft: "8px", fontSize: "0.8rem" }}>
-                              (₹{calculatedOwed})
-                            </span>
+                <div className="member-split-inputs-list">
+                  {members.map((m) => {
+                    const pctVal = parseFloat(percentSplits[m.user_id]) || 0;
+                    const calculatedOwed = numAmount > 0
+                      ? ((numAmount * pctVal) / 100).toFixed(2)
+                      : "0.00";
+
+                    return (
+                      <div key={m.user_id} className="member-split-input-row">
+                        <div className="member-row-info">
+                          <div className="member-avatar-circle">
+                            {getUserInitials(m.user_name)}
                           </div>
-                          <div style={{ position: "relative", width: "110px" }}>
+                          <span className="member-row-name">
+                            {m.user_name} {currentUser?.id === m.user_id ? "(You)" : ""}
+                          </span>
+                        </div>
+
+                        <div className="split-input-with-preview">
+                          <div className="input-with-suffix">
                             <input
                               type="number"
                               step="0.1"
                               min="0"
                               max="100"
+                              className="split-num-input"
                               placeholder="0"
-                              value={percentSplits[m.user_id] || ""}
-                              onChange={(e) => setPercentSplits({ ...percentSplits, [m.user_id]: e.target.value })}
-                              style={{ padding: "6px 24px 6px 8px", fontSize: "0.85rem", width: "100%" }}
+                              value={percentSplits[m.user_id] ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPercentSplits((prev) => ({
+                                  ...prev,
+                                  [m.user_id]: val,
+                                }));
+                              }}
                             />
-                            <span style={{ position: "absolute", right: "8px", top: "7px", color: "#64748b", fontSize: "0.85rem" }}>%</span>
+                            <span className="input-suffix">%</span>
+                          </div>
+                          <div className="calculated-preview-chip">
+                            ₹{calculatedOwed}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* 4. SHARES SPLIT */}
-              {splitType === "shares" && (
-                <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "0.84rem" }}>
-                    <span>Assign proportion of shares (e.g. 1, 2, etc.):</span>
-                    <span style={{ fontWeight: 700, color: "#7557E8" }}>
-                      Total: {totalShares} shares
-                    </span>
+            {/* EXACT AMOUNT SPLIT */}
+            {splitType === "exact" && (
+              <div>
+                <div
+                  className="split-status-bar"
+                  style={{
+                    background: Math.abs(exactDiff) <= 0.05 ? "#f0fdf4" : "#fef2f2",
+                    borderColor: Math.abs(exactDiff) <= 0.05 ? "#bbf7d0" : "#fecaca",
+                    color: Math.abs(exactDiff) <= 0.05 ? "#166534" : "#991b1b",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {Math.abs(exactDiff) <= 0.05 ? (
+                      <Check size={16} />
+                    ) : (
+                      <AlertCircle size={16} />
+                    )}
+                    <strong>
+                      Assigned: ₹{exactSum.toFixed(2)} / ₹{numAmount.toFixed(2)}
+                    </strong>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {members.map((m) => {
-                      const sh = parseFloat(shareCounts[m.user_id]) || 0;
-                      const calculatedOwed = totalShares > 0 ? ((numAmount * sh) / totalShares).toFixed(2) : "0.00";
-                      return (
-                        <div
-                          key={m.user_id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: "10px",
-                            fontSize: "0.85rem"
+                  <span style={{ fontSize: "0.82rem" }}>
+                    {Math.abs(exactDiff) <= 0.05
+                      ? "Amounts match total ✨"
+                      : exactDiff > 0
+                      ? `₹${exactDiff.toFixed(2)} remaining`
+                      : `₹${Math.abs(exactDiff).toFixed(2)} over total`}
+                  </span>
+                </div>
+
+                <div className="member-split-inputs-list">
+                  {members.map((m) => (
+                    <div key={m.user_id} className="member-split-input-row">
+                      <div className="member-row-info">
+                        <div className="member-avatar-circle">
+                          {getUserInitials(m.user_name)}
+                        </div>
+                        <span className="member-row-name">
+                          {m.user_name} {currentUser?.id === m.user_id ? "(You)" : ""}
+                        </span>
+                      </div>
+
+                      <div className="input-with-prefix" style={{ width: "130px" }}>
+                        <span className="input-prefix">₹</span>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          className="split-num-input prefix-padding"
+                          placeholder="0.00"
+                          value={customSplits[m.user_id] ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomSplits((prev) => ({
+                              ...prev,
+                              [m.user_id]: val,
+                            }));
                           }}
-                        >
-                          <div>
-                            <strong>{m.full_name}</strong>
-                            <span style={{ color: "#7557E8", marginLeft: "8px", fontSize: "0.8rem" }}>
-                              (₹{calculatedOwed})
-                            </span>
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* SHARES SPLIT */}
+            {splitType === "shares" && (
+              <div>
+                <div className="split-status-bar" style={{ background: "#f8fafc", color: "#475569" }}>
+                  <span>Total Shares: <strong>{totalShares}</strong></span>
+                  <span>Calculates proportionate share per person</span>
+                </div>
+
+                <div className="member-split-inputs-list">
+                  {members.map((m) => {
+                    const sh = parseFloat(shareCounts[m.user_id]) || 0;
+                    const calculatedOwed =
+                      numAmount > 0 && totalShares > 0
+                        ? ((numAmount * sh) / totalShares).toFixed(2)
+                        : "0.00";
+
+                    return (
+                      <div key={m.user_id} className="member-split-input-row">
+                        <div className="member-row-info">
+                          <div className="member-avatar-circle">
+                            {getUserInitials(m.user_name)}
                           </div>
-                          <div style={{ width: "90px" }}>
+                          <span className="member-row-name">
+                            {m.user_name} {currentUser?.id === m.user_id ? "(You)" : ""}
+                          </span>
+                        </div>
+
+                        <div className="split-input-with-preview">
+                          <div className="input-with-suffix">
                             <input
                               type="number"
                               step="1"
                               min="0"
+                              className="split-num-input"
                               placeholder="1"
-                              value={shareCounts[m.user_id] || ""}
-                              onChange={(e) => setShareCounts({ ...shareCounts, [m.user_id]: e.target.value })}
-                              style={{ padding: "6px 8px", fontSize: "0.85rem", width: "100%", textAlign: "center" }}
+                              value={shareCounts[m.user_id] ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setShareCounts((prev) => ({
+                                  ...prev,
+                                  [m.user_id]: val,
+                                }));
+                              }}
                             />
+                            <span className="input-suffix">share{sh !== 1 ? "s" : ""}</span>
+                          </div>
+                          <div className="calculated-preview-chip">
+                            ₹{calculatedOwed}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+
+          {/* 6. Payment Method & Optional Description */}
+          <div className="form-group-row" style={{ marginTop: "14px" }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Payment Method</label>
+              <select
+                className="form-input form-select"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              >
+                <option value="UPI">UPI / GPay / PhonePe</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Debit / Credit Card</option>
+                <option value="Net Banking">Net Banking</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
 
-            {/* Description */}
-            <div className="form-group" style={{ marginTop: "14px" }}>
-              <label>Notes / Description (Optional)</label>
-              <textarea
-                rows={2}
-                placeholder="Add receipt notes or memo..."
+            <div className="form-group" style={{ flex: 1.5 }}>
+              <label>Note / Description (Optional)</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Optional memo or item details"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="modal-footer" style={{ padding: "14px 20px" }}>
-            <button type="button" className="secondary-button" onClick={onClose} disabled={loading}>
+          {/* 7. Optional Payment Proof / Receipt Attachment */}
+          <div className="form-group" style={{ marginTop: "6px" }}>
+            <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Attach Payment Proof (Optional)</span>
+              <span style={{ fontSize: "0.78rem", color: "#64748b" }}>JPG, PNG, WEBP, PDF (Max 10MB)</span>
+            </label>
+
+            {!receiptFile ? (
+              <label className="receipt-upload-dropzone">
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/jpg, image/webp, application/pdf"
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                />
+                <div className="dropzone-content">
+                  <div className="dropzone-icon">
+                    <UploadCloud size={24} />
+                  </div>
+                  <div>
+                    <strong>Upload Screenshot or Bill Image</strong>
+                    <p>Tap to browse files or snap a receipt photo</p>
+                  </div>
+                </div>
+              </label>
+            ) : (
+              <div className="receipt-preview-card">
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0, flex: 1 }}>
+                  {receiptPreview ? (
+                    <img
+                      src={receiptPreview}
+                      alt="Receipt preview"
+                      className="receipt-thumbnail"
+                    />
+                  ) : (
+                    <div className="receipt-thumbnail pdf-thumb">
+                      <FileText size={24} color="#ef4444" />
+                    </div>
+                  )}
+                  <div className="receipt-file-info">
+                    <span className="receipt-filename">{receiptFile.name}</span>
+                    <span className="receipt-filesize">
+                      {(receiptFile.size / 1024).toFixed(1)} KB • {isPdf ? "PDF Document" : "Image Proof"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <label className="receipt-replace-btn" title="Replace file">
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp, application/pdf"
+                      onChange={handleFileChange}
+                      style={{ display: "none" }}
+                    />
+                    <span>Replace</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="receipt-remove-btn"
+                    onClick={handleRemoveReceipt}
+                    title="Remove attachment"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Actions */}
+          <div className="modal-actions" style={{ marginTop: "20px" }}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancel
             </button>
-            <button type="submit" className="primary-button" disabled={loading}>
-              {loading ? "Saving Expense..." : "Add Expense"}
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={loading}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                flex: 1,
+              }}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner-small" />
+                  <span>Saving Expense...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={18} />
+                  <span>Save Group Expense (₹{numAmount > 0 ? numAmount.toLocaleString() : "0.00"})</span>
+                </>
+              )}
             </button>
           </div>
         </form>

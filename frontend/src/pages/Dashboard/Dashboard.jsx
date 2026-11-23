@@ -29,7 +29,8 @@ import {
   Pie,
   Cell
 } from "recharts";
-import QuickActionSheet from "../../components/common/QuickActionSheet";
+import AddPersonalExpenseModal from "../../components/expenses/AddPersonalExpenseModal";
+import AddPersonalIncomeModal from "../../components/expenses/AddPersonalIncomeModal";
 
 export default function Dashboard({
   summary = {},
@@ -45,7 +46,8 @@ export default function Dashboard({
   onAddExpense,
   onNavigate
 }) {
-  const [showQuickSheet, setShowQuickSheet] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
 
   const formatAmount = (val) =>
     val != null
@@ -127,7 +129,7 @@ export default function Dashboard({
             <button
               type="button"
               className="hero-action-btn primary-action"
-              onClick={() => setShowQuickSheet(true)}
+              onClick={() => setShowExpenseModal(true)}
               aria-label="Add Expense"
             >
               <Plus size={18} strokeWidth={2.5} />
@@ -137,7 +139,7 @@ export default function Dashboard({
             <button
               type="button"
               className="hero-action-btn secondary-action"
-              onClick={() => onNavigate("Income")}
+              onClick={() => setShowIncomeModal(true)}
               aria-label="Add Income"
             >
               <ArrowDownRight size={17} />
@@ -492,7 +494,7 @@ export default function Dashboard({
               <button
                 type="button"
                 className="empty-add-btn"
-                onClick={() => setShowQuickSheet(true)}
+                onClick={() => setShowExpenseModal(true)}
               >
                 + Add Expense
               </button>
@@ -742,15 +744,22 @@ export default function Dashboard({
         </section>
       </div>
 
-      {/* Quick Action Bottom Sheet */}
-      <QuickActionSheet
-        isOpen={showQuickSheet}
-        onClose={() => setShowQuickSheet(false)}
-        onNavigate={onNavigate}
+      {/* Modals for Personal Expense and Income */}
+      <AddPersonalExpenseModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
         onExpenseAdded={async () => {
           if (onAddExpense) {
             window.location.reload();
           }
+        }}
+      />
+
+      <AddPersonalIncomeModal
+        isOpen={showIncomeModal}
+        onClose={() => setShowIncomeModal(false)}
+        onIncomeAdded={async () => {
+          window.location.reload();
         }}
       />
     </div>

@@ -46,7 +46,7 @@ const TABS = [
   { id: "settings", label: "Settings" },
 ];
 
-export default function GroupDetailView({ groupId, currentUser, onBack }) {
+export default function GroupDetailView({ groupId, currentUser, onBack, externalAddTrigger }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [group, setGroup] = useState(null);
   const [dashboard, setDashboard] = useState(null);
@@ -64,6 +64,19 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [settlePreload, setSettlePreload] = useState({ payerId: null, receiverId: null, amount: "" });
+  const [viewingReceiptUrl, setViewingReceiptUrl] = useState(null);
+
+  const getUserInitials = (name = "") => {
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.slice(0, 2).toUpperCase() || "MB";
+  };
+
+  useEffect(() => {
+    if (externalAddTrigger) {
+      setShowAddExpense(true);
+    }
+  }, [externalAddTrigger]);
 
   const loadAllGroupData = async () => {
     setRefreshing(true);
@@ -564,6 +577,19 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
                           "{e.description}"
                         </div>
                       )}
+
+                      {e.receipt_url && (
+                        <div style={{ marginTop: "8px" }}>
+                          <button
+                            type="button"
+                            className="receipt-pill-btn"
+                            onClick={() => setViewingReceiptUrl(e.receipt_url)}
+                          >
+                            <FileText size={13} />
+                            <span>View Payment Proof</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {(isPayer || isAdmin) && (
@@ -668,22 +694,58 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
             {/* Mobile View: Clean Balances Feed */}
             <div className="mobile-tx-feed">
               {balancesData.member_balances.map((mb) => (
-                <div key={mb.user_id} className="mobile-tx-card" style={{ padding: "12px 14px" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                      <strong>{mb.user_name} {currentUser?.id === mb.user_id ? "(You)" : ""}</strong>
-                      <span style={{
-                        fontWeight: 700,
-                        fontSize: "0.95rem",
-                        color: mb.net_balance > 0 ? "#10b981" : mb.net_balance < 0 ? "#ef4444" : "#64748b"
-                      }}>
-                        {mb.net_balance > 0 ? `+₹${mb.net_balance.toLocaleString()} (gets back)` : mb.net_balance < 0 ? `-₹${Math.abs(mb.net_balance).toLocaleString()} (owes)` : "Settled ✨"}
-                      </span>
+                <div key={mb.user_id} className="member-liability-card">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div className="member-avatar-circle">
+                        {getUserInitials(mb.user_name)}
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "0.98rem" }}>{mb.user_name} {currentUser?.id === mb.user_id ? "(You)" : ""}</strong>
+                        <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                          {mb.email || "Active Member"}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#64748b" }}>
-                      <span>Paid: ₹{mb.total_paid.toLocaleString()} • Share: ₹{mb.total_share.toLocaleString()}</span>
-                      {mb.settlements_sent > 0 && <span style={{ color: "#0d9488" }}>Sent: ₹{mb.settlements_sent.toLocaleString()}</span>}
+
+                    <span style={{
+                      fontWeight: 700,
+                      fontSize: "0.85rem",
+                      padding: "4px 10px",
+                      borderRadius: "20px",
+                      background: mb.net_balance > 0.01 ? "#f0fdf4" : mb.net_balance < -0.01 ? "#fef2f2" : "#f8fafc",
+                      color: mb.net_balance > 0.01 ? "#16a34a" : mb.net_balance < -0.01 ? "#dc2626" : "#64748b",
+                      border: `1px solid ${mb.net_balance > 0.01 ? "#bbf7d0" : mb.net_balance < -0.01 ? "#fecaca" : "#e2e8f0"}`
+                    }}>
+                      {mb.net_balance > 0.01
+                        ? `Should receive: +₹${mb.net_balance.toLocaleString()}`
+                        : mb.net_balance < -0.01
+                        ? `Owes: -₹${Math.abs(mb.net_balance).toLocaleString()}`
+                        : "All Settled ✨"}
+                    </span>
+                  </div>
+
+                  <div className="liability-breakdown-row">
+                    <div className="liability-item">
+                      <span className="liability-label">Paid</span>
+                      <strong className="liability-value">₹{mb.total_paid.toLocaleString()}</strong>
                     </div>
+                    <div className="liability-item">
+                      <span className="liability-label">Own Share</span>
+                      <strong className="liability-value">₹{mb.total_share.toLocaleString()}</strong>
+                    </div>
+                    {mb.settlements_sent > 0 && (
+                      <div className="liability-item">
+                        <span className="liability-label">Settled Sent</span>
+                        <strong className="liability-value" style={{ color: "#0d9488" }}>₹{mb.settlements_sent.toLocaleString()}</strong>
+                      </div>
+                    )}
+                    {mb.settlements_received > 0 && (
+                      <div className="liability-item">
+                        <span className="liability-label">Settled Recv</span>
+                        <strong className="liability-value" style={{ color: "#7557E8" }}>₹{mb.settlements_received.toLocaleString()}</strong>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1127,6 +1189,50 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
           onClose={() => setShowSettleModal(false)}
           onSettled={loadAllGroupData}
         />
+      )}
+
+      {/* Payment Receipt Preview Modal */}
+      {viewingReceiptUrl && (
+        <div className="modal-backdrop" onClick={() => setViewingReceiptUrl(null)}>
+          <div className="modal-card receipt-view-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FileText size={20} color="#7557E8" />
+                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700 }}>Payment Receipt Proof</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-button"
+                onClick={() => setViewingReceiptUrl(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ textAlign: "center", padding: "16px" }}>
+              {viewingReceiptUrl.toLowerCase().endsWith(".pdf") ? (
+                <div style={{ padding: "30px 10px" }}>
+                  <FileText size={48} color="#ef4444" style={{ margin: "0 auto 12px" }} />
+                  <p style={{ fontWeight: 600, marginBottom: "16px" }}>PDF Receipt Document Attached</p>
+                  <a
+                    href={viewingReceiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="primary-button"
+                    style={{ textDecoration: "none", display: "inline-block" }}
+                  >
+                    Open PDF Document
+                  </a>
+                </div>
+              ) : (
+                <img
+                  src={viewingReceiptUrl}
+                  alt="Payment Receipt"
+                  style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: "10px", objectFit: "contain" }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -17,7 +17,12 @@ import GroupDetailView from "./GroupDetailView";
 import CreateGroupModal from "./CreateGroupModal";
 import InvitationsModal from "./InvitationsModal";
 
-export default function GroupsPage({ currentUser, selectedGroupId: propGroupId = null, onSelectGroup }) {
+export default function GroupsPage({
+  currentUser,
+  selectedGroupId: propGroupId = null,
+  onSelectGroup,
+  externalAddTrigger = null
+}) {
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(propGroupId);
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
@@ -26,6 +31,12 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
   useEffect(() => {
     setSelectedGroupId(propGroupId);
   }, [propGroupId]);
+
+  useEffect(() => {
+    if (externalAddTrigger && !selectedGroupId) {
+      setShowCreateModal(true);
+    }
+  }, [externalAddTrigger, selectedGroupId]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,6 +102,7 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
       <GroupDetailView
         groupId={selectedGroupId}
         currentUser={currentUser}
+        externalAddTrigger={externalAddTrigger}
         onBack={() => {
           handleSelectGroup(null);
           loadGroupsData();

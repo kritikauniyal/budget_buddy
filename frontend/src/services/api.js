@@ -168,6 +168,31 @@ export const api = {
   },
 
   // Expenses API
+  uploadReceipt: async (file) => {
+    const token = localStorage.getItem("budget_buddy_token");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const url = `${API_BASE_URL}/api/upload/receipt`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Failed to upload receipt proof");
+    }
+
+    return response.json();
+  },
+
   getExpenses: async (params = {}) => {
     const queryParts = [];
     if (params.category) queryParts.push(`category=${encodeURIComponent(params.category)}`);

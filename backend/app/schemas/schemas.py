@@ -97,6 +97,7 @@ class ExpenseCreate(BaseModel):
     transaction_date: Optional[str] = None
     payment_method: Optional[str] = "Cash"
     description: Optional[str] = None
+    receipt_url: Optional[str] = None
 
 class ExpenseOut(BaseModel):
     id: int
@@ -107,6 +108,7 @@ class ExpenseOut(BaseModel):
     icon: str
     payment_method: str
     description: Optional[str] = None
+    receipt_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -174,6 +176,7 @@ class GroupExpenseCreate(BaseModel):
     expense_date: Optional[str] = None
     payment_method: Optional[str] = "UPI"
     description: Optional[str] = None
+    receipt_url: Optional[str] = None
     participant_ids: Optional[List[int]] = None  # for equal split
     splits: Optional[List[GroupExpenseSplitCreate]] = None  # for custom split
 
@@ -199,6 +202,7 @@ class GroupExpenseOut(BaseModel):
     expense_date: str
     payment_method: str
     description: Optional[str] = None
+    receipt_url: Optional[str] = None
     splits: List[GroupExpenseSplitOut]
     created_at: str
 

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import BottomNav from "./BottomNav";
-import QuickActionSheet from "../common/QuickActionSheet";
+import AddPersonalExpenseModal from "../expenses/AddPersonalExpenseModal";
 import { CheckCircle2 } from "lucide-react";
 
 export default function Layout({
@@ -16,10 +16,21 @@ export default function Layout({
   onOpenAuth,
   selectedGroupId,
   onSelectGroup,
+  onTriggerGroupExpense,
   children
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [quickSheetOpen, setQuickSheetOpen] = useState(false);
+  const [showPersonalExpenseModal, setShowPersonalExpenseModal] = useState(false);
+
+  const handleQuickAddClick = () => {
+    if (activePage === "Groups" && selectedGroupId) {
+      if (onTriggerGroupExpense) {
+        onTriggerGroupExpense();
+      }
+    } else {
+      setShowPersonalExpenseModal(true);
+    }
+  };
 
   return (
     <div className="app-container">
@@ -67,14 +78,13 @@ export default function Layout({
             setActivePage(page);
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          onQuickAdd={() => setQuickSheetOpen(true)}
+          onQuickAdd={handleQuickAddClick}
         />
 
-        {/* Mobile Quick Action Bottom Sheet */}
-        <QuickActionSheet
-          isOpen={quickSheetOpen}
-          onClose={() => setQuickSheetOpen(false)}
-          onNavigate={setActivePage}
+        {/* Dedicated Personal Add Expense Modal */}
+        <AddPersonalExpenseModal
+          isOpen={showPersonalExpenseModal}
+          onClose={() => setShowPersonalExpenseModal(false)}
           onExpenseAdded={onRefresh}
         />
       </main>

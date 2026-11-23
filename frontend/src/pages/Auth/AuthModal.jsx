@@ -67,18 +67,8 @@ export default function AuthModal({ isOpen, onClose }) {
         </button>
 
         <div className="auth-header">
-          <img
-            src="/api/logo.png"
-            alt="Budget Buddy Logo"
-            className="auth-main-logo"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              const fallback = document.getElementById('auth-modal-fallback');
-              if (fallback) fallback.style.display = 'grid';
-            }}
-          />
-          <div id="auth-modal-fallback" className="auth-brand-icon" style={{ display: 'none' }}>
-            <Wallet size={26} />
+          <div className="auth-brand-badge">
+            <Wallet size={28} strokeWidth={2.2} />
           </div>
           <h2>{isRegister ? "Create Budget Buddy Account" : "Sign In to Budget Buddy"}</h2>
           <p>

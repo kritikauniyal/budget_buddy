@@ -170,18 +170,8 @@ export default function AuthPage() {
     <div className="auth-page-container">
       <div className="auth-card">
         <div className="auth-header">
-          <img
-            src="/api/logo.png"
-            alt="Budget Buddy Logo"
-            className="auth-main-logo"
-            onError={(e) => {
-              e.target.style.display = "none";
-              const fallback = document.getElementById("auth-fallback-icon");
-              if (fallback) fallback.style.display = "grid";
-            }}
-          />
-          <div id="auth-fallback-icon" className="auth-brand-icon" style={{ display: "none" }}>
-            <Wallet size={28} />
+          <div className="auth-brand-badge">
+            <Wallet size={32} strokeWidth={2.2} />
           </div>
           <h1>Budget Buddy</h1>
           <p className="auth-subtitle">

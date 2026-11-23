@@ -343,9 +343,11 @@ def inspect_invitation(token: str, db: Session = Depends(get_db)):
         GroupMember.status == "active"
     ).count()
 
+    is_universal_share = (inv.invitee_email is None and inv.invitee_phone is None)
+
     return {
         "token": inv.token,
-        "status": inv.status,
+        "status": "pending" if is_universal_share else inv.status,
         "group_id": group.id,
         "group_name": group.name,
         "group_description": group.description,
@@ -377,11 +379,23 @@ def accept_invitation(
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
-    if inv.status != "pending":
-        existing = db.query(GroupMember).filter(
-            GroupMember.group_id == group.id,
-            GroupMember.user_id == current_user.id
-        ).first()
+    # Check if already a member
+    existing = db.query(GroupMember).filter(
+        GroupMember.group_id == group.id,
+        GroupMember.user_id == current_user.id
+    ).first()
+
+    is_universal_share = (inv.invitee_email is None and inv.invitee_phone is None)
+
+    if existing and existing.status == "active":
+        return {
+            "success": True,
+            "message": f"You are already a member of {group.name}!",
+            "group_id": group.id,
+            "group_name": group.name
+        }
+
+    if inv.status != "pending" and not is_universal_share:
         if existing:
             return {
                 "success": True,
@@ -389,13 +403,7 @@ def accept_invitation(
                 "group_id": group.id,
                 "group_name": group.name
             }
-        raise HTTPException(status_code=400, detail=f"This invitation has already been accepted.")
-
-    # Check if already a member
-    existing = db.query(GroupMember).filter(
-        GroupMember.group_id == group.id,
-        GroupMember.user_id == current_user.id
-    ).first()
+        raise HTTPException(status_code=400, detail="This invitation has already been accepted.")
 
     if existing:
         existing.status = "active"
@@ -408,18 +416,21 @@ def accept_invitation(
         )
         db.add(new_member)
 
-    inv.status = "accepted"
+    # Only mark targeted 1-to-1 invitations as accepted; keep universal share links active for all friends
+    if not is_universal_share:
+        inv.status = "accepted"
     db.commit()
 
-    # Notify inviter
-    db.add(Notification(
-        user_id=inv.invited_by,
-        title=f"New Member Joined {group.name}",
-        message=f"{current_user.full_name} accepted your invitation and joined '{group.name}'!",
-        type="group_invite",
-        action_url=f"/groups/{group.id}"
-    ))
-    db.commit()
+    # Notify inviter if it's another user
+    if inv.invited_by != current_user.id:
+        db.add(Notification(
+            user_id=inv.invited_by,
+            title=f"New Member Joined {group.name}",
+            message=f"{current_user.full_name} accepted your invitation and joined '{group.name}'!",
+            type="group_invite",
+            action_url=f"/groups/{group.id}"
+        ))
+        db.commit()
 
     return {
         "success": True,

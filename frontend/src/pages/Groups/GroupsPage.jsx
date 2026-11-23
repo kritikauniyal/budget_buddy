@@ -6,10 +6,11 @@ import {
   RefreshCw,
   Wallet,
   ArrowRight,
-  Receipt,
-  UserPlus,
+  TrendingUp,
+  TrendingDown,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronRight
 } from "lucide-react";
 import api from "../../services/api";
 import GroupDetailView from "./GroupDetailView";
@@ -20,6 +21,7 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(propGroupId);
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
+  const [filter, setFilter] = useState("all"); // 'all' | 'owe' | 'receive' | 'settled'
 
   useEffect(() => {
     setSelectedGroupId(propGroupId);
@@ -73,6 +75,16 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
     }
   };
 
+  const getGroupIcon = (type = "") => {
+    const t = type.toLowerCase();
+    if (t.includes("room") || t.includes("hostel") || t.includes("flat")) return { emoji: "🏠", bg: "#eff6ff", color: "#3b82f6" };
+    if (t.includes("trip") || t.includes("travel")) return { emoji: "✈️", bg: "#fef3c7", color: "#d97706" };
+    if (t.includes("couple")) return { emoji: "💑", bg: "#fce7f3", color: "#ec4899" };
+    if (t.includes("family")) return { emoji: "👨‍👩‍👧", bg: "#f3e8ff", color: "#a855f7" };
+    if (t.includes("office") || t.includes("work")) return { emoji: "💼", bg: "#e0f2fe", color: "#0284c7" };
+    return { emoji: "👥", bg: "#f5f3ff", color: "#7557E8" };
+  };
+
   // If a group is selected, render the detailed view
   if (selectedGroupId) {
     return (
@@ -87,34 +99,41 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
     );
   }
 
+  const filteredGroups = groups.filter((g) => {
+    if (filter === "owe") return g.my_balance < -0.01;
+    if (filter === "receive") return g.my_balance > 0.01;
+    if (filter === "settled") return Math.abs(g.my_balance) <= 0.01;
+    return true;
+  });
+
   return (
-    <div className="groups-page">
-      {/* Top Banner & Header */}
-      <div className="welcome-section">
+    <div className="groups-container">
+      {/* Header Banner */}
+      <div className="welcome-section" style={{ flexWrap: "wrap", gap: "14px" }}>
         <div>
-          <h2>Group Expense Sharing</h2>
-          <p>Split trip expenses, roommate rent, dinner bills, and settle balances effortlessly</p>
+          <h2>Shared Groups</h2>
+          <p>Split apartment rent, travel trips, dining bills, and settle with flatmates easily.</p>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          {/* Refresh Button */}
+          {/* Refresh */}
           <button
             onClick={loadGroupsData}
             className="secondary-button"
-            style={{ padding: "9px 12px", minWidth: "auto", borderRadius: "10px" }}
+            style={{ padding: "9px 12px", borderRadius: "12px" }}
             title="Refresh groups"
             disabled={refreshing}
           >
             <RefreshCw size={16} className={refreshing ? "spin-icon" : ""} />
           </button>
 
-          {/* Pending Invitations Button */}
+          {/* Pending Invitations */}
           <button
             onClick={() => setShowInvitesModal(true)}
             className="secondary-button"
             style={{
               padding: "9px 16px",
-              borderRadius: "10px",
+              borderRadius: "12px",
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
@@ -137,13 +156,13 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
             )}
           </button>
 
-          {/* Create Group Button */}
+          {/* Create Group */}
           <button
             onClick={() => setShowCreateModal(true)}
             className="primary-button"
             style={{
               padding: "9px 18px",
-              borderRadius: "10px",
+              borderRadius: "12px",
               display: "inline-flex",
               alignItems: "center",
               gap: "6px"
@@ -156,86 +175,87 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
       </div>
 
       {error && (
-        <div className="auth-alert error" style={{ marginBottom: "20px" }}>
+        <div className="auth-alert error">
           <AlertCircle size={16} />
           <span>{error}</span>
         </div>
       )}
 
+      {/* Filter Chips Bar */}
+      {groups.length > 0 && (
+        <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
+          {[
+            { id: "all", label: `All Groups (${groups.length})` },
+            { id: "receive", label: "You Will Receive" },
+            { id: "owe", label: "You Owe" },
+            { id: "settled", label: "All Settled" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilter(tab.id)}
+              style={{
+                padding: "6px 14px",
+                borderRadius: "20px",
+                border: filter === tab.id ? "2px solid #7557E8" : "1px solid #e2e8f0",
+                background: filter === tab.id ? "rgba(117, 87, 232, 0.1)" : "#ffffff",
+                color: filter === tab.id ? "#7557E8" : "#64748b",
+                fontWeight: filter === tab.id ? 700 : 500,
+                fontSize: "0.82rem",
+                cursor: "pointer",
+                whiteSpace: "nowrap"
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Groups List */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <div className="auth-brand-icon spin-icon" style={{ margin: "0 auto 16px" }}>
-            👥
-          </div>
+        <div style={{ textAlign: "center", padding: "60px 20px", color: "#64748b" }}>
+          <div style={{ fontSize: "36px", marginBottom: "12px" }}>👥</div>
           <h3>Loading your groups...</h3>
         </div>
-      ) : groups.length > 0 ? (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-          gap: "20px"
-        }}>
-          {groups.map((g) => {
+      ) : filteredGroups.length > 0 ? (
+        <div className="groups-card-grid">
+          {filteredGroups.map((g) => {
             const isOwed = g.my_balance > 0.01;
             const owes = g.my_balance < -0.01;
+            const iconInfo = getGroupIcon(g.group_type);
 
             return (
               <div
                 key={g.id}
+                className="group-card-pro"
                 onClick={() => handleSelectGroup(g.id)}
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "16px",
-                  padding: "20px",
-                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)",
-                  border: "1px solid #f1f5f9",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.08)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.04)";
-                }}
               >
                 <div>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div style={{
-                        width: "44px",
-                        height: "44px",
-                        borderRadius: "12px",
-                        background: "rgba(117, 87, 232, 0.12)",
-                        color: "#7557E8",
-                        display: "grid",
-                        placeItems: "center"
-                      }}>
-                        <Users size={22} />
-                      </div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#1e293b" }}>
-                          {g.name}
-                        </h3>
-                        <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                          {g.group_type} • {g.member_count} {g.member_count === 1 ? "member" : "members"}
-                        </span>
+                  <div className="group-card-header">
+                    <div
+                      className="group-avatar-box"
+                      style={{ background: iconInfo.bg, color: iconInfo.color }}
+                    >
+                      {iconInfo.emoji}
+                    </div>
+
+                    <div className="group-info-meta">
+                      <h3 className="group-title-text">{g.name}</h3>
+                      <div className="group-type-label">
+                        <span>{g.group_type}</span>
+                        <span>•</span>
+                        <span>{g.member_count} {g.member_count === 1 ? "member" : "members"}</span>
                       </div>
                     </div>
 
-                    <span style={{
-                      padding: "2px 8px",
-                      borderRadius: "12px",
-                      fontSize: "0.74rem",
-                      fontWeight: 600,
-                      background: g.my_role === "admin" ? "rgba(34, 184, 160, 0.15)" : "#f1f5f9",
-                      color: g.my_role === "admin" ? "#0f766e" : "#64748b"
-                    }}>
+                    <span
+                      className="group-role-badge"
+                      style={{
+                        background: g.my_role === "admin" ? "rgba(34, 184, 160, 0.12)" : "#f1f5f9",
+                        color: g.my_role === "admin" ? "#0f766e" : "#64748b"
+                      }}
+                    >
                       {g.my_role === "admin" ? "Admin" : "Member"}
                     </span>
                   </div>
@@ -244,7 +264,7 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
                     <p style={{
                       fontSize: "0.82rem",
                       color: "#64748b",
-                      margin: "0 0 14px",
+                      margin: "10px 0 0",
                       lineHeight: 1.4,
                       display: "-webkit-box",
                       WebkitLineClamp: 2,
@@ -256,30 +276,30 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
                   )}
                 </div>
 
-                <div style={{
-                  borderTop: "1px solid #f1f5f9",
-                  paddingTop: "14px",
-                  marginTop: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between"
-                }}>
+                <div className="group-card-footer">
                   <div>
-                    <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block" }}>
-                      My Net Balance
-                    </span>
-                    <span style={{
-                      fontWeight: 700,
-                      fontSize: "1rem",
-                      color: isOwed ? "#10b981" : owes ? "#ef4444" : "#64748b"
-                    }}>
-                      {isOwed ? `+₹${g.my_balance.toLocaleString()}` : owes ? `-₹${Math.abs(g.my_balance).toLocaleString()}` : "Settled"}
+                    <span className="group-spend-meta">
+                      Total: ₹{g.total_expenses ? g.total_expenses.toLocaleString("en-IN") : "0"}
                     </span>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#7557E8", fontSize: "0.85rem", fontWeight: 600 }}>
-                    <span>Open Group</span>
-                    <ArrowRight size={15} />
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span className={`group-balance-chip ${isOwed ? "owed" : owes ? "owes" : "settled"}`}>
+                      {isOwed ? (
+                        <>
+                          <TrendingUp size={13} />
+                          <span>+₹{g.my_balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                        </>
+                      ) : owes ? (
+                        <>
+                          <TrendingDown size={13} />
+                          <span>-₹{Math.abs(g.my_balance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                        </>
+                      ) : (
+                        <span>Settled ✨</span>
+                      )}
+                    </span>
+                    <ChevronRight size={17} color="#94a3b8" />
                   </div>
                 </div>
               </div>
@@ -289,15 +309,16 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
       ) : (
         <div style={{
           background: "#ffffff",
-          borderRadius: "16px",
+          borderRadius: "20px",
           padding: "50px 20px",
           textAlign: "center",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)"
+          border: "1px solid #f1f5f9",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.03)"
         }}>
           <div style={{
-            width: "60px",
-            height: "60px",
-            borderRadius: "50%",
+            width: "64px",
+            height: "64px",
+            borderRadius: "20px",
             background: "rgba(117, 87, 232, 0.12)",
             color: "#7557E8",
             display: "grid",
@@ -307,15 +328,15 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
             <Users size={32} />
           </div>
           <h3 style={{ margin: "0 0 6px", fontSize: "1.25rem", fontWeight: 700 }}>
-            No groups created yet
+            {filter === "all" ? "No shared groups yet" : "No groups matching filter"}
           </h3>
-          <p style={{ margin: "0 auto 20px", maxWidth: "440px", color: "#64748b", fontSize: "0.88rem" }}>
-            Create a group for an upcoming trip, shared apartment rent, or friends' night out. Add friends, split bills, and track who owes whom!
+          <p style={{ margin: "0 auto 20px", maxWidth: "420px", color: "#64748b", fontSize: "0.88rem", lineHeight: 1.5 }}>
+            Create a group for your room flatmates, hostel, trip, or dinner outing. Invite friends, log expenses, and settle up cleanly without spreadsheets!
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
             className="primary-button"
-            style={{ padding: "10px 22px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+            style={{ padding: "10px 22px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "6px", margin: "0 auto" }}
           >
             <Plus size={18} />
             <span>Create Your First Group</span>

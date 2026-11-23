@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Users, CheckCircle2 } from "lucide-react";
+import { Users, CheckCircle2, Sparkles, ArrowRight, Check, X } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard/Dashboard";
@@ -239,28 +239,56 @@ function MainApp() {
 
       {/* Dedicated Join Group Invitation Prompt */}
       {pendingInvite && (
-        <div className="modal-backdrop">
-          <div className="modal-card" style={{ maxWidth: "480px", textAlign: "center", padding: "28px 24px" }}>
-            <div style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
-              background: "rgba(117, 87, 232, 0.12)",
-              color: "#7557E8",
-              display: "grid",
-              placeItems: "center",
-              margin: "0 auto 16px"
-            }}>
-              <Users size={28} />
+        <div
+          className="invite-sheet-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !joiningInvite) {
+              setPendingInvite(null);
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }}
+        >
+          <div className="invite-sheet-card">
+            <div className="invite-sheet-handle" />
+
+            <div className="invite-avatar-hero">
+              {(() => {
+                const t = (pendingInvite.group_type || "").toLowerCase();
+                if (t.includes("room") || t.includes("hostel") || t.includes("flat")) return "🏠";
+                if (t.includes("trip") || t.includes("travel")) return "✈️";
+                if (t.includes("couple")) return "💑";
+                if (t.includes("family")) return "👨‍👩‍👧";
+                if (t.includes("office") || t.includes("work")) return "💼";
+                return "👥";
+              })()}
             </div>
 
-            <h2 style={{ fontSize: "1.35rem", fontWeight: 700, marginBottom: "6px" }}>
+            <div className="invite-badge-type">
+              {pendingInvite.group_type || "Friends"} Group
+            </div>
+
+            <h2 className="invite-title">
               Join "{pendingInvite.group_name}"?
             </h2>
 
-            <p style={{ color: "#64748b", fontSize: "0.88rem", lineHeight: 1.5, marginBottom: "18px" }}>
-              <strong>{pendingInvite.invited_by_name}</strong> invited you to join their <strong>{pendingInvite.group_type}</strong> group on Budget Buddy to share expenses and split balances.
+            <p className="invite-subtitle">
+              <strong>{pendingInvite.invited_by_name || "A friend"}</strong> invited you to join their group on Budget Buddy to share expenses and split balances.
             </p>
+
+            <div className="invite-features-box">
+              <div className="invite-feature-item">
+                <Check size={16} color="#10b981" />
+                <span>Dedicated Shared Group Expense Inbox</span>
+              </div>
+              <div className="invite-feature-item">
+                <Check size={16} color="#10b981" />
+                <span>Equal, exact, percentage & shares split engine</span>
+              </div>
+              <div className="invite-feature-item">
+                <Check size={16} color="#10b981" />
+                <span>Instant simplified debt settlement & history</span>
+              </div>
+            </div>
 
             {inviteError && (
               <div className="auth-alert error" style={{ marginBottom: "16px", textAlign: "left" }}>
@@ -269,14 +297,16 @@ function MainApp() {
             )}
 
             {inviteSuccessMsg ? (
-              <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "12px", borderRadius: "10px", fontWeight: 600, marginBottom: "16px" }}>
-                {inviteSuccessMsg}
+              <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "14px", borderRadius: "14px", fontWeight: 700, marginBottom: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                <CheckCircle2 size={18} />
+                <span>{inviteSuccessMsg}</span>
               </div>
             ) : (
-              <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "10px" }}>
+              <div className="invite-actions-row">
                 <button
                   type="button"
-                  className="secondary-button"
+                  className="invite-btn-decline"
+                  disabled={joiningInvite}
                   onClick={() => {
                     setPendingInvite(null);
                     window.history.replaceState({}, document.title, window.location.pathname);
@@ -286,28 +316,27 @@ function MainApp() {
                 </button>
                 <button
                   type="button"
-                  className="primary-button"
+                  className="invite-btn-accept"
                   disabled={joiningInvite}
                   onClick={async () => {
                     setJoiningInvite(true);
                     setInviteError("");
                     try {
                       const res = await api.acceptInvitation(pendingInvite.token);
-                      setInviteSuccessMsg(`🎉 You've successfully joined ${res.group_name}!`);
+                      setInviteSuccessMsg(`🎉 Joined ${res.group_name}! Opening group...`);
                       window.history.replaceState({}, document.title, window.location.pathname);
                       setTimeout(() => {
                         setPendingInvite(null);
                         setSelectedGroupId(res.group_id);
                         setActivePage("Groups");
-                      }, 1000);
+                      }, 500);
                     } catch (err) {
                       setInviteError(err.message || "Could not accept invitation.");
-                    } finally {
                       setJoiningInvite(false);
                     }
                   }}
                 >
-                  <CheckCircle2 size={16} />
+                  <CheckCircle2 size={18} />
                   <span>{joiningInvite ? "Joining..." : "Accept & Join Group"}</span>
                 </button>
               </div>
@@ -315,6 +344,7 @@ function MainApp() {
           </div>
         </div>
       )}
+
 
       {/* Onboarding Modal for New Sessions */}
       {showOnboarding && (

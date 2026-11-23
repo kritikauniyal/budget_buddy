@@ -167,34 +167,28 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
 
   return (
     <div className="group-detail-page">
-      {/* Group Header Banner */}
-      <div className="group-detail-header" style={{
-        background: "#ffffff",
-        borderRadius: "16px",
-        padding: "20px 24px",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)",
-        marginBottom: "20px"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+      {/* Top Banner & Header */}
+      <div className="group-header-card">
+        <div className="group-header-top">
+          <div className="group-header-left">
             <button
               onClick={onBack}
-              className="secondary-button"
-              style={{ padding: "8px 12px", minWidth: "auto", borderRadius: "10px" }}
+              className="group-back-btn"
               title="Back to all groups"
             >
               <ArrowLeft size={18} />
             </button>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <h2 style={{ margin: 0, fontSize: "1.45rem", fontWeight: 700 }}>{group.name}</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <h2 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 800, color: "#1e293b" }}>{group.name}</h2>
                 <span style={{
                   padding: "3px 10px",
                   borderRadius: "20px",
-                  fontSize: "0.78rem",
-                  fontWeight: 600,
+                  fontSize: "0.74rem",
+                  fontWeight: 700,
                   background: "rgba(117, 87, 232, 0.12)",
-                  color: "#7557E8"
+                  color: "#7557E8",
+                  textTransform: "uppercase"
                 }}>
                   {group.group_type}
                 </span>
@@ -202,7 +196,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
                   <span style={{
                     padding: "3px 10px",
                     borderRadius: "20px",
-                    fontSize: "0.75rem",
+                    fontSize: "0.72rem",
                     fontWeight: 700,
                     background: "rgba(34, 184, 160, 0.15)",
                     color: "#0f766e"
@@ -212,7 +206,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
                 )}
               </div>
               {group.description && (
-                <p style={{ margin: "4px 0 0", fontSize: "0.88rem", color: "#64748b" }}>
+                <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "#64748b" }}>
                   {group.description}
                 </p>
               )}
@@ -220,11 +214,11 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
           </div>
 
           {/* Quick Actions Header */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <div className="group-header-actions">
             <button
               onClick={loadAllGroupData}
               className="secondary-button"
-              style={{ padding: "9px 12px", minWidth: "auto", borderRadius: "10px" }}
+              style={{ padding: "8px 12px", minWidth: "auto", borderRadius: "12px" }}
               title="Refresh group data"
               disabled={refreshing}
             >
@@ -234,10 +228,10 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
             <button
               onClick={() => setShowInviteModal(true)}
               className="secondary-button"
-              style={{ padding: "9px 14px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              style={{ padding: "8px 14px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
             >
               <UserPlus size={16} />
-              <span>Invite Friends</span>
+              <span>Invite</span>
             </button>
 
             <button
@@ -246,7 +240,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
                 setShowSettleModal(true);
               }}
               className="secondary-button"
-              style={{ padding: "9px 14px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "6px", color: "#0f766e", borderColor: "#99f6e4" }}
+              style={{ padding: "8px 14px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "6px", color: "#0f766e", borderColor: "#99f6e4" }}
             >
               <CheckCircle2 size={16} />
               <span>Settle Up</span>
@@ -255,7 +249,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
             <button
               onClick={() => setShowAddExpense(true)}
               className="primary-button"
-              style={{ padding: "9px 18px", borderRadius: "10px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+              style={{ padding: "8px 16px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
             >
               <Plus size={18} />
               <span>Add Expense</span>
@@ -263,33 +257,13 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div style={{
-          display: "flex",
-          gap: "8px",
-          borderTop: "1px solid #f1f5f9",
-          marginTop: "18px",
-          paddingTop: "12px",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-          scrollbarWidth: "none"
-        }}>
+        {/* Navigation Tabs Bar */}
+        <div className="group-tabs-scroll">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "8px",
-                border: "none",
-                background: activeTab === t.id ? "#7557E8" : "transparent",
-                color: activeTab === t.id ? "#ffffff" : "#64748b",
-                fontWeight: activeTab === t.id ? 600 : 500,
-                fontSize: "0.88rem",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-                whiteSpace: "nowrap"
-              }}
+              className={`group-tab-btn ${activeTab === t.id ? "active" : ""}`}
             >
               {t.label}
               {t.id === "expenses" && ` (${expenses.length})`}
@@ -298,6 +272,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
           ))}
         </div>
       </div>
+
 
       {/* TAB 1: OVERVIEW / DASHBOARD */}
       {activeTab === "overview" && dashboard && (
@@ -500,20 +475,20 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
         </div>
       )}
 
-      {/* TAB 2: EXPENSES LIST */}
+      {/* TAB 2: EXPENSES LIST (GROUP INBOX) */}
       {activeTab === "expenses" && (
-        <div style={{ background: "#ffffff", padding: "20px", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
+        <div style={{ background: "#ffffff", padding: "18px 20px", borderRadius: "20px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700 }}>Group Expenses ({expenses.length})</h3>
-              <p style={{ margin: "2px 0 0", fontSize: "0.84rem", color: "#64748b" }}>
-                Track who paid, split breakdowns, and member shares
+              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800 }}>Group Expenses Inbox ({expenses.length})</h3>
+              <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                All shared bills, grocery, rent, and outings in real time
               </p>
             </div>
             <button
               onClick={() => setShowAddExpense(true)}
               className="primary-button"
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "12px" }}
             >
               <Plus size={16} />
               <span>Add Expense</span>
@@ -521,88 +496,100 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
           </div>
 
           {expenses.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {expenses.map((e) => (
-                <div
-                  key={e.id}
-                  style={{
-                    padding: "16px",
-                    borderRadius: "12px",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "10px"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                      <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "rgba(117, 87, 232, 0.12)", display: "grid", placeItems: "center", fontSize: "1.3rem" }}>
-                        {e.category_icon || "💳"}
-                      </div>
-                      <div>
-                        <strong style={{ fontSize: "1rem" }}>{e.title}</strong>
-                        <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "2px" }}>
-                          Paid by <strong>{e.payer_name}</strong> • {e.expense_date} • {e.category_name} • {e.payment_method}
-                        </div>
-                      </div>
+            <div className="group-inbox-feed">
+              {expenses.map((e) => {
+                const isPayer = e.paid_by === currentUser?.id;
+                const mySplit = e.splits?.find((s) => s.user_id === currentUser?.id);
+
+                return (
+                  <div key={e.id} className="group-inbox-item">
+                    <div
+                      className="group-inbox-cat-icon"
+                      style={{ background: "rgba(117, 87, 232, 0.12)", color: "#7557E8" }}
+                    >
+                      {e.category_icon || "💳"}
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                      <span style={{ fontSize: "1.15rem", fontWeight: 700, color: "#1e293b" }}>
-                        ₹{e.amount.toLocaleString()}
-                      </span>
-                      {(e.paid_by === currentUser?.id || isAdmin) && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExpense(e.id)}
-                          style={{ border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", padding: "4px" }}
-                          title="Delete Expense"
+                    <div className="group-inbox-content">
+                      <div className="group-inbox-top-row">
+                        <span className="group-inbox-title">{e.title}</span>
+                        <span className="group-inbox-total">
+                          ₹{e.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      <div className="group-inbox-sub-row">
+                        <span>
+                          Paid by <strong style={{ color: isPayer ? "#7557E8" : "inherit" }}>{isPayer ? "You" : e.payer_name}</strong> • {e.expense_date}
+                        </span>
+
+                        <span
+                          className="group-inbox-share-pill"
+                          style={{
+                            background: isPayer ? "#f0fdf4" : mySplit ? "#fef2f2" : "#f8fafc",
+                            color: isPayer ? "#16a34a" : mySplit ? "#dc2626" : "#64748b"
+                          }}
                         >
-                          <Trash2 size={16} />
-                        </button>
+                          {isPayer
+                            ? `You lent ₹${(e.amount - (mySplit?.owed_amount || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            : mySplit
+                            ? `You owe ₹${mySplit.owed_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            : "Not involved"}
+                        </span>
+                      </div>
+
+                      {/* Split Tags */}
+                      {e.splits && e.splits.length > 0 && (
+                        <div style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "6px",
+                          marginTop: "8px",
+                          paddingTop: "6px",
+                          borderTop: "1px dashed #f1f5f9",
+                          fontSize: "0.75rem",
+                          color: "#64748b"
+                        }}>
+                          <span style={{ fontWeight: 600 }}>Splits:</span>
+                          {e.splits.map((s) => (
+                            <span key={s.id} style={{ background: "#f8fafc", padding: "1px 6px", borderRadius: "6px" }}>
+                              {s.user_name}: ₹{s.owed_amount.toLocaleString("en-IN")}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {e.description && (
+                        <div style={{ fontSize: "0.76rem", color: "#64748b", fontStyle: "italic", marginTop: "4px" }}>
+                          "{e.description}"
+                        </div>
                       )}
                     </div>
+
+                    {(isPayer || isAdmin) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExpense(e.id)}
+                        style={{ border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", padding: "6px", opacity: 0.7 }}
+                        title="Delete Expense"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
-
-                  {/* Split Breakdown */}
-                  {e.splits && e.splits.length > 0 && (
-                    <div style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "8px",
-                      background: "#ffffff",
-                      padding: "8px 12px",
-                      borderRadius: "8px",
-                      border: "1px solid #f1f5f9",
-                      fontSize: "0.78rem"
-                    }}>
-                      <span style={{ fontWeight: 600, color: "#64748b" }}>Splits:</span>
-                      {e.splits.map((s) => (
-                        <span key={s.id} style={{ color: "#334155" }}>
-                          <strong>{s.user_name}</strong> owes ₹{s.owed_amount.toLocaleString()}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {e.description && (
-                    <div style={{ fontSize: "0.8rem", color: "#64748b", fontStyle: "italic" }}>
-                      "{e.description}"
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
               <Receipt size={40} style={{ margin: "0 auto 10px", color: "#cbd5e1" }} />
-              <p style={{ margin: 0, fontSize: "0.95rem" }}>No expenses recorded yet.</p>
-              <span style={{ fontSize: "0.82rem" }}>Add lunch, road trip fuel, groceries or hotel bookings!</span>
+              <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#475569" }}>No expenses in this group yet</p>
+              <span style={{ fontSize: "0.82rem" }}>Add lunch, room rent, groceries or travel tickets!</span>
             </div>
           )}
         </div>
       )}
+
 
       {/* TAB 3: BALANCES & SETTLEMENTS ("WHO OWES WHOM") */}
       {activeTab === "balances" && balancesData && (
@@ -674,44 +661,73 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
             )}
           </div>
 
-          {/* Member Net Balances Table */}
+          {/* Member Net Balances */}
           <div style={{ background: "#ffffff", padding: "20px", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>
             <h3 style={{ margin: "0 0 14px", fontSize: "1.1rem", fontWeight: 700 }}>Individual Member Balances</h3>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #e2e8f0", textAlign: "left", color: "#64748b" }}>
-                    <th style={{ padding: "10px" }}>Member</th>
-                    <th style={{ padding: "10px" }}>Total Paid</th>
-                    <th style={{ padding: "10px" }}>Total Share</th>
-                    <th style={{ padding: "10px" }}>Settled Sent</th>
-                    <th style={{ padding: "10px" }}>Settled Received</th>
-                    <th style={{ padding: "10px" }}>Net Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {balancesData.member_balances.map((mb) => (
-                    <tr key={mb.user_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "12px 10px", fontWeight: 600 }}>
-                        {mb.user_name} {currentUser?.id === mb.user_id ? "(You)" : ""}
-                      </td>
-                      <td style={{ padding: "12px 10px" }}>₹{mb.total_paid.toLocaleString()}</td>
-                      <td style={{ padding: "12px 10px" }}>₹{mb.total_share.toLocaleString()}</td>
-                      <td style={{ padding: "12px 10px", color: "#0d9488" }}>₹{mb.settlements_sent.toLocaleString()}</td>
-                      <td style={{ padding: "12px 10px", color: "#64748b" }}>₹{mb.settlements_received.toLocaleString()}</td>
-                      <td style={{
-                        padding: "12px 10px",
+
+            {/* Mobile View: Clean Balances Feed */}
+            <div className="mobile-tx-feed">
+              {balancesData.member_balances.map((mb) => (
+                <div key={mb.user_id} className="mobile-tx-card" style={{ padding: "12px 14px" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                      <strong>{mb.user_name} {currentUser?.id === mb.user_id ? "(You)" : ""}</strong>
+                      <span style={{
                         fontWeight: 700,
+                        fontSize: "0.95rem",
                         color: mb.net_balance > 0 ? "#10b981" : mb.net_balance < 0 ? "#ef4444" : "#64748b"
                       }}>
-                        {mb.net_balance > 0 ? `+₹${mb.net_balance.toLocaleString()} (gets back)` : mb.net_balance < 0 ? `-₹${Math.abs(mb.net_balance).toLocaleString()} (owes)` : "Settled"}
-                      </td>
+                        {mb.net_balance > 0 ? `+₹${mb.net_balance.toLocaleString()} (gets back)` : mb.net_balance < 0 ? `-₹${Math.abs(mb.net_balance).toLocaleString()} (owes)` : "Settled ✨"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#64748b" }}>
+                      <span>Paid: ₹{mb.total_paid.toLocaleString()} • Share: ₹{mb.total_share.toLocaleString()}</span>
+                      {mb.settlements_sent > 0 && <span style={{ color: "#0d9488" }}>Sent: ₹{mb.settlements_sent.toLocaleString()}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View: Full Table */}
+            <div className="desktop-table-container">
+              <div className="table-wrapper">
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid #e2e8f0", textAlign: "left", color: "#64748b" }}>
+                      <th style={{ padding: "10px" }}>Member</th>
+                      <th style={{ padding: "10px" }}>Total Paid</th>
+                      <th style={{ padding: "10px" }}>Total Share</th>
+                      <th style={{ padding: "10px" }}>Settled Sent</th>
+                      <th style={{ padding: "10px" }}>Settled Received</th>
+                      <th style={{ padding: "10px" }}>Net Balance</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {balancesData.member_balances.map((mb) => (
+                      <tr key={mb.user_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "12px 10px", fontWeight: 600 }}>
+                          {mb.user_name} {currentUser?.id === mb.user_id ? "(You)" : ""}
+                        </td>
+                        <td style={{ padding: "12px 10px" }}>₹{mb.total_paid.toLocaleString()}</td>
+                        <td style={{ padding: "12px 10px" }}>₹{mb.total_share.toLocaleString()}</td>
+                        <td style={{ padding: "12px 10px", color: "#0d9488" }}>₹{mb.settlements_sent.toLocaleString()}</td>
+                        <td style={{ padding: "12px 10px", color: "#64748b" }}>₹{mb.settlements_received.toLocaleString()}</td>
+                        <td style={{
+                          padding: "12px 10px",
+                          fontWeight: 700,
+                          color: mb.net_balance > 0 ? "#10b981" : mb.net_balance < 0 ? "#ef4444" : "#64748b"
+                        }}>
+                          {mb.net_balance > 0 ? `+₹${mb.net_balance.toLocaleString()} (gets back)` : mb.net_balance < 0 ? `-₹${Math.abs(mb.net_balance).toLocaleString()} (owes)` : "Settled"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+
 
           {/* Settlement History */}
           <div style={{ background: "#ffffff", padding: "20px", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>

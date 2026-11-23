@@ -3803,3 +3803,538 @@ body.dark-mode .bottom-note {
   border-top-color: #1e293b !important;
 }
 
+/* ==========================================================================
+   PREMIUM GROUPS & INVITATION SYSTEM STYLING
+   ========================================================================== */
+.invite-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@media (min-width: 640px) {
+  .invite-sheet-backdrop {
+    align-items: center;
+    padding: 20px;
+  }
+}
+
+.invite-sheet-card {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.2);
+  padding: 16px 22px calc(24px + env(safe-area-inset-bottom, 0px)) 22px;
+  animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .invite-sheet-card {
+    border-radius: 24px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+    padding: 30px 26px;
+  }
+}
+
+.invite-sheet-handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: #cbd5e1;
+  margin: 0 auto 16px;
+}
+
+.invite-avatar-hero {
+  width: 66px;
+  height: 66px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #7557E8 0%, #4f46e5 100%);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  font-size: 28px;
+  box-shadow: 0 10px 22px rgba(117, 87, 232, 0.35);
+}
+
+.invite-badge-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(117, 87, 232, 0.1);
+  color: #7557E8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.invite-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
+}
+
+.invite-subtitle {
+  font-size: 0.88rem;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.invite-features-box {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invite-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.invite-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 12px;
+}
+
+.invite-btn-decline {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 13px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.invite-btn-decline:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.invite-btn-accept {
+  background: linear-gradient(135deg, #7557E8 0%, #4f46e5 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 0.94rem;
+  padding: 13px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(117, 87, 232, 0.4);
+  transition: all 0.15s ease;
+}
+
+.invite-btn-accept:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(117, 87, 232, 0.3);
+}
+
+/* GROUPS LIST UI */
+.groups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.groups-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 680px) {
+  .groups-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .groups-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.group-card-pro {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 18px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.group-card-pro:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.07);
+  border-color: #e2e8f0;
+}
+
+.group-card-pro:active {
+  transform: scale(0.98);
+}
+
+.group-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.group-avatar-box {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.group-info-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-title-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-type-label {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-role-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.group-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f8fafc;
+}
+
+.group-spend-meta {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.group-balance-chip {
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.group-balance-chip.owed {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.group-balance-chip.owes {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.group-balance-chip.settled {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+/* SELECTIVE GROUP DETAIL VIEW */
+.group-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group-header-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 16px 20px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.group-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.group-back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  border: none;
+  display: grid;
+  place-items: center;
+  color: #475569;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.group-back-btn:active {
+  transform: scale(0.92);
+}
+
+.group-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.group-tabs-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.group-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.group-tab-btn {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: none;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-tab-btn.active {
+  background: #7557E8;
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(117, 87, 232, 0.35);
+}
+
+.group-inbox-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group-inbox-item {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.group-inbox-item:active {
+  background: #f8fafc;
+}
+
+.group-inbox-cat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.group-inbox-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-inbox-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.group-inbox-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-inbox-total {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-left: 8px;
+}
+
+.group-inbox-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.group-inbox-share-pill {
+  font-weight: 600;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+/* DARK MODE OVERRIDES FOR GROUPS */
+body.dark-mode .invite-sheet-card {
+  background: #131c31 !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .invite-sheet-handle {
+  background: #334155 !important;
+}
+
+body.dark-mode .invite-features-box {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+body.dark-mode .invite-feature-item {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .invite-btn-decline {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .group-card-pro {
+  background: #131c31 !important;
+  border-color: #1e293b !important;
+}
+
+body.dark-mode .group-title-text {
+  color: #f8fafc !important;
+}
+
+body.dark-mode .group-card-footer {
+  border-top-color: #1e293b !important;
+}
+
+body.dark-mode .group-header-card {
+  background: #131c31 !important;
+  border-color: #1e293b !important;
+}
+
+body.dark-mode .group-back-btn {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .group-tab-btn {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+body.dark-mode .group-tab-btn.active {
+  background: #7557E8 !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .group-inbox-item {
+  background: #131c31 !important;
+  border-color: #1e293b !important;
+}
+
+body.dark-mode .group-inbox-title,
+body.dark-mode .group-inbox-total {
+  color: #f8fafc !important;
+}
+
+

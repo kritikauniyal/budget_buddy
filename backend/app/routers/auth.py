@@ -21,6 +21,7 @@ from app.schemas.schemas import (
     ResetPasswordRequest
 )
 import secrets
+import datetime
 from app.utils.security import hash_password, verify_password, create_access_token
 from app.dependencies.auth import get_current_user
 from app.routers.dashboard import DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES
@@ -65,7 +66,11 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             GroupInvitation.status == "pending"
         ).first()
         if inv:
-            inv.status = "accepted"
+            is_universal = (inv.invitee_email is None and inv.invitee_phone is None)
+            if not is_universal:
+                inv.status = "accepted"
+                inv.accepted_at = datetime.datetime.utcnow()
+
             # Add member if not already added
             existing_member = db.query(GroupMember).filter(
                 GroupMember.group_id == inv.group_id,
@@ -76,7 +81,8 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
                     group_id=inv.group_id,
                     user_id=user.id,
                     role="member",
-                    status="active"
+                    status="active",
+                    joined_at=datetime.datetime.utcnow()
                 ))
                 group = db.query(Group).filter(Group.id == inv.group_id).first()
                 group_name = group.name if group else "Group"
@@ -86,6 +92,13 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
                     message=f"You successfully joined {group_name} through your invitation link!",
                     type="group_invite"
                 ))
+                if inv.invited_by != user.id:
+                    db.add(Notification(
+                        user_id=inv.invited_by,
+                        title=f"New Member Joined {group_name}",
+                        message=f"{user.full_name} accepted your invitation and joined '{group_name}'!",
+                        type="group_invite"
+                    ))
             db.commit()
 
     # Generate JWT access token

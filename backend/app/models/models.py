@@ -180,9 +180,11 @@ class GroupInvitation(Base):
     invitee_email = Column(String(255), nullable=True, index=True)
     invitee_phone = Column(String(50), nullable=True, index=True)
     token = Column(String(100), unique=True, index=True, nullable=False)
-    status = Column(String(20), default="pending")  # pending, accepted, rejected, expired
+    status = Column(String(20), default="pending")  # pending, accepted, declined, rejected, expired, cancelled
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)
+    accepted_at = Column(DateTime, nullable=True)
+    declined_at = Column(DateTime, nullable=True)
 
     # Relationships
     group = relationship("Group", back_populates="invitations")

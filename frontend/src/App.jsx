@@ -16,6 +16,7 @@ import NotificationsPage from "./pages/Notifications/NotificationsPage";
 import ProfilePage from "./pages/Profile/ProfilePage";
 import AuthPage from "./pages/Auth/AuthPage";
 import OnboardingModal from "./components/onboarding/OnboardingModal";
+import InvitePreviewSheet from "./components/invitations/InvitePreviewSheet";
 import api from "./services/api";
 import "./App.css";
 
@@ -43,20 +44,34 @@ function MainApp() {
 
   // Invitation Flow State
   const [pendingInvite, setPendingInvite] = useState(null);
-  const [joiningInvite, setJoiningInvite] = useState(false);
-  const [inviteError, setInviteError] = useState("");
-  const [inviteSuccessMsg, setInviteSuccessMsg] = useState("");
 
-  // Check URL invitation token
+  // Check URL invitation token or stored pending invitation
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("invite");
+    const match = window.location.pathname.match(/\/invite\/([a-zA-Z0-9_-]+)/);
+    const searchParam = new URLSearchParams(window.location.search).get("invite");
+    const token = (match && match[1]) || searchParam || localStorage.getItem("budget_buddy_pending_invite");
+
     if (token) {
       api.inspectInvitation(token)
         .then((data) => {
           setPendingInvite(data);
+          const autoJoin = localStorage.getItem("budget_buddy_auto_join");
+          if (isAuthenticated && autoJoin === token) {
+            localStorage.removeItem("budget_buddy_auto_join");
+            localStorage.removeItem("budget_buddy_pending_invite");
+            api.acceptInvitation(token)
+              .then((res) => {
+                setSelectedGroupId(res.group_id);
+                setActivePage("Groups");
+                setPendingInvite(null);
+                window.history.replaceState({}, document.title, "/");
+              })
+              .catch((e) => console.warn("Auto-join error:", e));
+          }
         })
         .catch((err) => {
           console.warn("Could not inspect invitation:", err);
+          localStorage.removeItem("budget_buddy_pending_invite");
         });
     }
 
@@ -143,9 +158,34 @@ function MainApp() {
     );
   }
 
-  // If not logged in, show the AuthPage
+  // If not logged in, show AuthPage with InvitePreviewSheet on top if pending invite exists
   if (!isAuthenticated) {
-    return <AuthPage />;
+    return (
+      <>
+        <AuthPage />
+        {pendingInvite && (
+          <InvitePreviewSheet
+            invite={pendingInvite}
+            onJoinSuccess={(res) => {
+              setPendingInvite(null);
+              setSelectedGroupId(res.group_id);
+              setActivePage("Groups");
+              loadData();
+            }}
+            onOpenGroup={(groupId) => {
+              setPendingInvite(null);
+              setSelectedGroupId(groupId);
+              setActivePage("Groups");
+            }}
+            onClose={() => {
+              setPendingInvite(null);
+              localStorage.removeItem("budget_buddy_pending_invite");
+              window.history.replaceState({}, document.title, window.location.pathname.replace(/\/invite\/[a-zA-Z0-9_-]+/, "/"));
+            }}
+          />
+        )}
+      </>
+    );
   }
 
   const renderActiveModule = () => {
@@ -240,112 +280,27 @@ function MainApp() {
         {renderActiveModule()}
       </Layout>
 
-      {/* Dedicated Join Group Invitation Prompt */}
+      {/* Dedicated Join Group Invitation Sheet matching reference screenshot */}
       {pendingInvite && (
-        <div
-          className="invite-sheet-backdrop"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !joiningInvite) {
-              setPendingInvite(null);
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
+        <InvitePreviewSheet
+          invite={pendingInvite}
+          onJoinSuccess={(res) => {
+            setPendingInvite(null);
+            setSelectedGroupId(res.group_id);
+            setActivePage("Groups");
+            loadData();
           }}
-        >
-          <div className="invite-sheet-card">
-            <div className="invite-sheet-handle" />
-
-            <div className="invite-avatar-hero">
-              {(() => {
-                const t = (pendingInvite.group_type || "").toLowerCase();
-                if (t.includes("room") || t.includes("hostel") || t.includes("flat")) return "🏠";
-                if (t.includes("trip") || t.includes("travel")) return "✈️";
-                if (t.includes("couple")) return "💑";
-                if (t.includes("family")) return "👨‍👩‍👧";
-                if (t.includes("office") || t.includes("work")) return "💼";
-                return "👥";
-              })()}
-            </div>
-
-            <div className="invite-badge-type">
-              {pendingInvite.group_type || "Friends"} Group
-            </div>
-
-            <h2 className="invite-title">
-              Join "{pendingInvite.group_name}"?
-            </h2>
-
-            <p className="invite-subtitle">
-              <strong>{pendingInvite.invited_by_name || "A friend"}</strong> invited you to join their group on Budget Buddy to share expenses and split balances.
-            </p>
-
-            <div className="invite-features-box">
-              <div className="invite-feature-item">
-                <Check size={16} color="#10b981" />
-                <span>Dedicated Shared Group Expense Inbox</span>
-              </div>
-              <div className="invite-feature-item">
-                <Check size={16} color="#10b981" />
-                <span>Equal, exact, percentage & shares split engine</span>
-              </div>
-              <div className="invite-feature-item">
-                <Check size={16} color="#10b981" />
-                <span>Instant simplified debt settlement & history</span>
-              </div>
-            </div>
-
-            {inviteError && (
-              <div className="auth-alert error" style={{ marginBottom: "16px", textAlign: "left" }}>
-                <span>{inviteError}</span>
-              </div>
-            )}
-
-            {inviteSuccessMsg ? (
-              <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "14px", borderRadius: "14px", fontWeight: 700, marginBottom: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                <CheckCircle2 size={18} />
-                <span>{inviteSuccessMsg}</span>
-              </div>
-            ) : (
-              <div className="invite-actions-row">
-                <button
-                  type="button"
-                  className="invite-btn-decline"
-                  disabled={joiningInvite}
-                  onClick={() => {
-                    setPendingInvite(null);
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                  }}
-                >
-                  Decline
-                </button>
-                <button
-                  type="button"
-                  className="invite-btn-accept"
-                  disabled={joiningInvite}
-                  onClick={async () => {
-                    setJoiningInvite(true);
-                    setInviteError("");
-                    try {
-                      const res = await api.acceptInvitation(pendingInvite.token);
-                      setInviteSuccessMsg(`🎉 Joined ${res.group_name}! Opening group...`);
-                      window.history.replaceState({}, document.title, window.location.pathname);
-                      setTimeout(() => {
-                        setPendingInvite(null);
-                        setSelectedGroupId(res.group_id);
-                        setActivePage("Groups");
-                      }, 500);
-                    } catch (err) {
-                      setInviteError(err.message || "Could not accept invitation.");
-                      setJoiningInvite(false);
-                    }
-                  }}
-                >
-                  <CheckCircle2 size={18} />
-                  <span>{joiningInvite ? "Joining..." : "Accept & Join Group"}</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+          onOpenGroup={(groupId) => {
+            setPendingInvite(null);
+            setSelectedGroupId(groupId);
+            setActivePage("Groups");
+          }}
+          onClose={() => {
+            setPendingInvite(null);
+            localStorage.removeItem("budget_buddy_pending_invite");
+            window.history.replaceState({}, document.title, window.location.pathname.replace(/\/invite\/[a-zA-Z0-9_-]+/, "/"));
+          }}
+        />
       )}
 
 

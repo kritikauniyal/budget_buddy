@@ -54,6 +54,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
   const [members, setMembers] = useState([]);
   const [balancesData, setBalancesData] = useState(null);
   const [settlements, setSettlements] = useState([]);
+  const [invitations, setInvitations] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,13 +83,14 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
     setRefreshing(true);
     setError("");
     try {
-      const [grp, dash, expList, memList, balData, setlList] = await Promise.all([
+      const [grp, dash, expList, memList, balData, setlList, invList] = await Promise.all([
         api.getGroup(groupId),
         api.getGroupDashboard(groupId),
         api.getGroupExpenses(groupId),
         api.getGroupMembers(groupId),
         api.getGroupBalances(groupId),
         api.getGroupSettlements(groupId),
+        api.getGroupInvitations(groupId).catch(() => []),
       ]);
 
       setGroup(grp);
@@ -97,6 +99,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
       setMembers(memList || []);
       setBalancesData(balData);
       setSettlements(setlList || []);
+      setInvitations(invList || []);
     } catch (err) {
       setError(err.message || "Failed to load group details.");
     } finally {
@@ -909,6 +912,116 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
               </div>
             ))}
           </div>
+
+          {isAdmin && invitations.length > 0 && (
+            <div style={{ marginTop: "28px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#334155" }}>
+                  Active & Pending Invitations ({invitations.length})
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(true)}
+                  style={{ background: "none", border: "none", color: "#6366f1", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
+                >
+                  + New Invitation
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {invitations.map((inv) => (
+                  <div
+                    key={inv.id}
+                    style={{
+                      padding: "14px 16px",
+                      borderRadius: "12px",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: "10px"
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#1e293b" }}>
+                        {inv.invitee_name || inv.invitee_email || inv.invitee_phone || "Universal Share Link"}
+                      </div>
+                      <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: "2px" }}>
+                        Status: <span style={{ textTransform: "capitalize", fontWeight: 700, color: inv.status === "pending" ? "#d97706" : inv.status === "accepted" ? "#16a34a" : "#dc2626" }}>{inv.status}</span> • Created {inv.created_at}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(`Hey! ${currentUser?.full_name || 'Admin'} invited you to join the ${group.name} group on Budget Buddy to share expenses and split balances.\n\nJoin our group:\n${window.location.origin}/invite/${inv.token}`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          background: "#25D366",
+                          color: "#ffffff",
+                          border: "none",
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        WhatsApp
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
+                          alert("Invitation link copied!");
+                        }}
+                        style={{
+                          background: "#ffffff",
+                          border: "1px solid #cbd5e1",
+                          padding: "6px 10px",
+                          borderRadius: "8px",
+                          fontSize: "0.78rem",
+                          fontWeight: 500,
+                          cursor: "pointer"
+                        }}
+                      >
+                        Copy
+                      </button>
+                      {inv.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!window.confirm("Are you sure you want to cancel this invitation?")) return;
+                            try {
+                              await api.cancelInvitation(inv.id);
+                              setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
+                            } catch (e) {
+                              alert(e.message || "Could not cancel invitation");
+                            }
+                          }}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#ef4444",
+                            cursor: "pointer",
+                            padding: "6px",
+                            display: "inline-flex",
+                            alignItems: "center"
+                          }}
+                          title="Cancel Invitation"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1173,6 +1286,7 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
       {showInviteModal && (
         <InviteMembersModal
           group={group}
+          currentUser={currentUser}
           onClose={() => setShowInviteModal(false)}
           onMembersInvited={loadAllGroupData}
         />

@@ -433,6 +433,12 @@ export const api = {
     });
   },
 
+  declineInvitation: async (token) => {
+    return await request(`/api/invitations/${token}/decline`, {
+      method: "POST",
+    });
+  },
+
   rejectInvitation: async (token) => {
     return await request(`/api/invitations/${token}/reject`, {
       method: "POST",
@@ -442,6 +448,12 @@ export const api = {
   cancelInvitation: async (invitationId) => {
     return await request(`/api/invitations/${invitationId}`, {
       method: "DELETE",
+    });
+  },
+
+  cancelInvitationByToken: async (token) => {
+    return await request(`/api/invitations/${token}/cancel`, {
+      method: "POST",
     });
   },
 

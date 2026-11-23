@@ -46,8 +46,9 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const match = window.location.pathname.match(/\/invite\/([a-zA-Z0-9_-]+)/);
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("invite");
+    const token = (match && match[1]) || params.get("invite") || localStorage.getItem("budget_buddy_pending_invite");
     if (token) {
       setInviteToken(token);
       setAuthMode("register"); // Default to register for new invites
@@ -102,6 +103,13 @@ export default function AuthPage() {
         );
       } else if (authMode === "login") {
         await login(formData.email, formData.password);
+        if (inviteToken) {
+          try {
+            await api.acceptInvitation(inviteToken);
+          } catch (e) {
+            console.warn("Could not auto-accept invite on login:", e);
+          }
+        }
       }
     } catch (err) {
       setError(err.message || "Authentication failed. Please verify your credentials.");

@@ -29,14 +29,20 @@ def get_frontend_base_url(request: Request) -> str:
     """Dynamically resolves the frontend base URL from the caller's origin, referer, or app configuration."""
     origin = request.headers.get("origin")
     referer = request.headers.get("referer")
-    if origin:
+    host = request.headers.get("host")
+    
+    if origin and not "192.168." in origin:
         return origin.rstrip("/")
-    if referer:
+    if referer and not "192.168." in referer:
         parsed = urlparse(referer)
         if parsed.scheme and parsed.netloc:
             return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
-    # Default to settings FRONTEND_URL or empty string
-    return (settings.FRONTEND_URL or "http://localhost:5173").rstrip("/")
+    if host and not host.startswith("192.168."):
+        proto = request.headers.get("x-forwarded-proto", "https" if "onrender.com" in host else "http")
+        return f"{proto}://{host}".rstrip("/")
+    if settings.FRONTEND_URL and not "192.168." in settings.FRONTEND_URL:
+        return settings.FRONTEND_URL.rstrip("/")
+    return "http://localhost:5173"
 
 
 @router.post("/group/{group_id}/invite", response_model=List[GroupInvitationOut])
@@ -139,7 +145,7 @@ def invite_members(
                 ))
                 db.commit()
 
-        invite_link = f"{base_url}/?invite={inv.token}"
+        invite_link = f"{base_url}/invite/{inv.token}"
         created_invites.append(
             GroupInvitationOut(
                 id=inv.id,
@@ -165,6 +171,7 @@ def invite_members(
 def get_group_invitations(
     group_id: int,
     request: Request,
+    status_filter: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -182,10 +189,10 @@ def get_group_invitations(
         raise HTTPException(status_code=404, detail="Group not found")
 
     base_url = get_frontend_base_url(request)
-    invitations = db.query(GroupInvitation).filter(
-        GroupInvitation.group_id == group_id,
-        GroupInvitation.status == "pending"
-    ).order_by(GroupInvitation.created_at.desc()).all()
+    query = db.query(GroupInvitation).filter(GroupInvitation.group_id == group_id)
+    if status_filter:
+        query = query.filter(GroupInvitation.status == status_filter)
+    invitations = query.order_by(GroupInvitation.created_at.desc()).all()
 
     users = db.query(User).all()
     user_map = {u.id: u for u in users}
@@ -210,7 +217,7 @@ def get_group_invitations(
                 invitee_email=inv.invitee_email,
                 invitee_phone=inv.invitee_phone,
                 token=inv.token,
-                invite_link=f"{base_url}/?invite={inv.token}",
+                invite_link=f"{base_url}/invite/{inv.token}",
                 status=inv.status,
                 is_registered=is_reg,
                 created_at=inv.created_at.strftime("%b %d, %Y")
@@ -255,7 +262,7 @@ def get_my_pending_invitations(
                     invitee_email=inv.invitee_email,
                     invitee_phone=inv.invitee_phone,
                     token=inv.token,
-                    invite_link=f"{base_url}/?invite={inv.token}",
+                    invite_link=f"{base_url}/invite/{inv.token}",
                     status=inv.status,
                     is_registered=True,
                     created_at=inv.created_at.strftime("%b %d, %Y")
@@ -316,7 +323,7 @@ def get_or_create_group_share_link(
         invitee_email=None,
         invitee_phone=None,
         token=existing_link.token,
-        invite_link=f"{base_url}/?invite={existing_link.token}",
+        invite_link=f"{base_url}/invite/{existing_link.token}",
         status=existing_link.status,
         is_registered=False,
         created_at=existing_link.created_at.strftime("%b %d, %Y")
@@ -324,8 +331,13 @@ def get_or_create_group_share_link(
 
 
 @router.get("/{token}")
-def inspect_invitation(token: str, db: Session = Depends(get_db)):
-    """Preview invitation details before accepting or logging in."""
+def inspect_invitation(
+    token: str,
+    request: Request,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """Preview invitation details dynamically from the database before accepting or logging in."""
     inv = db.query(GroupInvitation).filter(
         GroupInvitation.token == token.strip()
     ).first()
@@ -345,20 +357,43 @@ def inspect_invitation(token: str, db: Session = Depends(get_db)):
 
     is_universal_share = (inv.invitee_email is None and inv.invitee_phone is None)
 
+    # Check expiration
+    is_expired = False
+    if inv.expires_at and inv.expires_at < datetime.datetime.utcnow():
+        is_expired = True
+
+    # Check if current user is already an active member
+    is_already_member = False
+    if current_user:
+        existing_member = db.query(GroupMember).filter(
+            GroupMember.group_id == group.id,
+            GroupMember.user_id == current_user.id,
+            GroupMember.status == "active"
+        ).first()
+        if existing_member:
+            is_already_member = True
+
+    base_url = get_frontend_base_url(request)
+    invite_url = f"{base_url}/invite/{inv.token}"
+
     return {
         "token": inv.token,
         "status": "pending" if is_universal_share else inv.status,
         "group_id": group.id,
         "group_name": group.name,
-        "group_description": group.description,
-        "group_type": group.group_type,
-        "currency": group.currency,
+        "group_description": group.description or "",
+        "group_type": group.group_type or "Friends",
+        "currency": group.currency or "INR",
         "member_count": member_count,
-        "invited_by_name": inviter.full_name if inviter else "Someone",
+        "invited_by_name": inviter.full_name if inviter else "Group Admin",
         "invitee_name": inv.invitee_name,
         "invitee_email": inv.invitee_email,
         "invitee_phone": inv.invitee_phone,
-        "created_at": inv.created_at.strftime("%b %d, %Y")
+        "is_universal_share": is_universal_share,
+        "is_already_member": is_already_member,
+        "is_expired": is_expired,
+        "invite_link": invite_url,
+        "created_at": inv.created_at.strftime("%b %d, %Y") if inv.created_at else ""
     }
 
 
@@ -379,6 +414,14 @@ def accept_invitation(
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
+    # Check expiration
+    if inv.expires_at and inv.expires_at < datetime.datetime.utcnow():
+        raise HTTPException(status_code=400, detail="This invitation link has expired. Please ask the group admin for a new link.")
+
+    # Check cancelled
+    if inv.status == "cancelled":
+        raise HTTPException(status_code=400, detail="This invitation has been cancelled by the group admin.")
+
     # Check if already a member
     existing = db.query(GroupMember).filter(
         GroupMember.group_id == group.id,
@@ -390,35 +433,45 @@ def accept_invitation(
     if existing and existing.status == "active":
         return {
             "success": True,
+            "already_member": True,
             "message": f"You are already a member of {group.name}!",
             "group_id": group.id,
             "group_name": group.name
         }
 
-    if inv.status != "pending" and not is_universal_share:
-        if existing:
+    if inv.status == "accepted" and not is_universal_share:
+        if existing and existing.status == "active":
             return {
                 "success": True,
+                "already_member": True,
                 "message": f"You are already a member of {group.name}!",
                 "group_id": group.id,
                 "group_name": group.name
             }
         raise HTTPException(status_code=400, detail="This invitation has already been accepted.")
 
+    if inv.status in ["declined", "rejected"] and not is_universal_share:
+        raise HTTPException(status_code=400, detail="This invitation was previously declined.")
+
+    now = datetime.datetime.utcnow()
     if existing:
         existing.status = "active"
+        existing.joined_at = now
     else:
         new_member = GroupMember(
             group_id=group.id,
             user_id=current_user.id,
             role="member",
-            status="active"
+            status="active",
+            joined_at=now
         )
         db.add(new_member)
 
     # Only mark targeted 1-to-1 invitations as accepted; keep universal share links active for all friends
     if not is_universal_share:
         inv.status = "accepted"
+        inv.accepted_at = now
+
     db.commit()
 
     # Notify inviter if it's another user
@@ -434,16 +487,18 @@ def accept_invitation(
 
     return {
         "success": True,
+        "already_member": False,
         "message": f"Successfully joined {group.name}!",
         "group_id": group.id,
         "group_name": group.name
     }
 
 
+@router.post("/{token}/decline")
 @router.post("/{token}/reject")
-def reject_invitation(
+def decline_invitation(
     token: str,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     inv = db.query(GroupInvitation).filter(
@@ -453,9 +508,53 @@ def reject_invitation(
     if not inv:
         raise HTTPException(status_code=404, detail="Invitation not found")
 
-    inv.status = "rejected"
+    is_universal_share = (inv.invitee_email is None and inv.invitee_phone is None)
+    now = datetime.datetime.utcnow()
+
+    if not is_universal_share:
+        inv.status = "declined"
+        inv.declined_at = now
+        db.commit()
+
+    # If inviter exists and declined by identified user, notify
+    if current_user and inv.invited_by != current_user.id:
+        group = db.query(Group).filter(Group.id == inv.group_id).first()
+        group_name = group.name if group else "Group"
+        db.add(Notification(
+            user_id=inv.invited_by,
+            title="Invitation Declined",
+            message=f"{current_user.full_name} declined the invitation to join '{group_name}'.",
+            type="group_invite"
+        ))
+        db.commit()
+
+    return {
+        "success": True,
+        "message": "Invitation declined. You have not been added to the group."
+    }
+
+
+@router.post("/{token}/cancel")
+def cancel_invitation_by_token(
+    token: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    inv = db.query(GroupInvitation).filter(GroupInvitation.token == token.strip()).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    mem = db.query(GroupMember).filter(
+        GroupMember.group_id == inv.group_id,
+        GroupMember.user_id == current_user.id,
+        GroupMember.status == "active"
+    ).first()
+    if not mem or (mem.role != "admin" and inv.invited_by != current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to cancel this invitation")
+
+    inv.status = "cancelled"
     db.commit()
-    return {"message": "Invitation declined"}
+    return {"success": True, "message": "Invitation cancelled successfully"}
 
 
 @router.delete("/{invitation_id}")
@@ -477,6 +576,6 @@ def cancel_invitation(
     if not mem or (mem.role != "admin" and inv.invited_by != current_user.id):
         raise HTTPException(status_code=403, detail="Not authorized to cancel this invitation")
 
-    db.delete(inv)
+    inv.status = "cancelled"
     db.commit()
-    return {"message": "Invitation revoked"}
+    return {"success": True, "message": "Invitation cancelled successfully"}

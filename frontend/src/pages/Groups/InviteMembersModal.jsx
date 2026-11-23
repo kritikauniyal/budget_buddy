@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, UserPlus, Smartphone, Share2, Copy, Check, MessageSquare, Mail, Trash2, Send } from "lucide-react";
 import api from "../../services/api";
 
-export default function InviteMembersModal({ group, onClose, onMembersInvited }) {
+export default function InviteMembersModal({ group, currentUser, onClose, onMembersInvited }) {
   const [contacts, setContacts] = useState([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,13 +35,14 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
 
   const formatShareUrl = (token) => {
     if (!token) return "";
-    return `${window.location.origin}/?invite=${token}`;
+    return `${window.location.origin}/invite/${token}`;
   };
 
   const getWhatsAppShareUrl = (token, phoneVal = "") => {
     const cleanPhone = phoneVal ? phoneVal.replace(/[^0-9]/g, "") : "";
     const link = formatShareUrl(token);
-    const msg = `👋 Hi! Join our group '${group.name}' on Budget Buddy to share expenses and split bills!\n\n👉 Click this link to join:\n${link}`;
+    const inviter = currentUser?.full_name || group?.invited_by_name || "A friend";
+    const msg = `Hey! ${inviter} invited you to join the ${group.name} group on Budget Buddy to share expenses and split balances.\n\nJoin our group:\n${link}`;
     return cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
       : `https://wa.me/?text=${encodeURIComponent(msg)}`;
@@ -123,7 +124,8 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
 
   const handleNativeShare = (invite) => {
     const url = formatShareUrl(invite.token);
-    const text = `Join my group '${group.name}' on Budget Buddy to share expenses and track balances! Click here:\n${url}`;
+    const inviter = currentUser?.full_name || "A friend";
+    const text = `Hey! ${inviter} invited you to join the ${group.name} group on Budget Buddy to share expenses and split balances.\n\nJoin our group:\n${url}`;
     if (navigator.share) {
       navigator.share({
         title: `Join ${group.name} on Budget Buddy`,

@@ -70,13 +70,13 @@ export default function CategoriesPage() {
     <div className="module-page">
       <div className="welcome-section">
         <div>
-          <h2>Category Management</h2>
-          <p>Organize your financial activities with custom tags, colors, and icons.</p>
+          <h2>Categories</h2>
+          <p>Organize your spending and earnings with custom tags, colors, and icons.</p>
         </div>
 
         <button className="primary-button" onClick={() => setShowModal(true)}>
           <Plus size={18} />
-          Create Category
+          Add Category
         </button>
       </div>
 

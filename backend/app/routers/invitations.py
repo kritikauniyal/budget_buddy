@@ -1,10 +1,12 @@
 import uuid
 import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from urllib.parse import urlparse
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
+from app.config import settings
 from app.database import get_db
 from app.models.models import (
     User,
@@ -23,10 +25,25 @@ from app.dependencies.auth import get_current_user, get_optional_current_user
 router = APIRouter(prefix="/api/invitations", tags=["Invitations & Contacts System"])
 
 
+def get_frontend_base_url(request: Request) -> str:
+    """Dynamically resolves the frontend base URL from the caller's origin, referer, or app configuration."""
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    if origin:
+        return origin.rstrip("/")
+    if referer:
+        parsed = urlparse(referer)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+    # Default to settings FRONTEND_URL or empty string
+    return (settings.FRONTEND_URL or "http://localhost:5173").rstrip("/")
+
+
 @router.post("/group/{group_id}/invite", response_model=List[GroupInvitationOut])
 def invite_members(
     group_id: int,
     batch_in: GroupInviteBatchRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -43,6 +60,7 @@ def invite_members(
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
+    base_url = get_frontend_base_url(request)
     created_invites: List[GroupInvitationOut] = []
 
     for c in batch_in.contacts:
@@ -121,7 +139,7 @@ def invite_members(
                 ))
                 db.commit()
 
-        invite_link = f"http://127.0.0.1:5173/?invite={inv.token}"
+        invite_link = f"{base_url}/?invite={inv.token}"
         created_invites.append(
             GroupInvitationOut(
                 id=inv.id,
@@ -146,6 +164,7 @@ def invite_members(
 @router.get("/group/{group_id}", response_model=List[GroupInvitationOut])
 def get_group_invitations(
     group_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -162,6 +181,7 @@ def get_group_invitations(
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
+    base_url = get_frontend_base_url(request)
     invitations = db.query(GroupInvitation).filter(
         GroupInvitation.group_id == group_id,
         GroupInvitation.status == "pending"
@@ -190,7 +210,7 @@ def get_group_invitations(
                 invitee_email=inv.invitee_email,
                 invitee_phone=inv.invitee_phone,
                 token=inv.token,
-                invite_link=f"http://127.0.0.1:5173/?invite={inv.token}",
+                invite_link=f"{base_url}/?invite={inv.token}",
                 status=inv.status,
                 is_registered=is_reg,
                 created_at=inv.created_at.strftime("%b %d, %Y")
@@ -201,6 +221,7 @@ def get_group_invitations(
 
 @router.get("/pending", response_model=List[GroupInvitationOut])
 def get_my_pending_invitations(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -212,6 +233,7 @@ def get_my_pending_invitations(
     )
     invitations = query.order_by(GroupInvitation.created_at.desc()).all()
 
+    base_url = get_frontend_base_url(request)
     groups = db.query(Group).all()
     group_map = {g.id: g for g in groups}
     users = db.query(User).all()
@@ -233,7 +255,7 @@ def get_my_pending_invitations(
                     invitee_email=inv.invitee_email,
                     invitee_phone=inv.invitee_phone,
                     token=inv.token,
-                    invite_link=f"http://127.0.0.1:5173/?invite={inv.token}",
+                    invite_link=f"{base_url}/?invite={inv.token}",
                     status=inv.status,
                     is_registered=True,
                     created_at=inv.created_at.strftime("%b %d, %Y")
@@ -245,6 +267,7 @@ def get_my_pending_invitations(
 @router.post("/group/{group_id}/link", response_model=GroupInvitationOut)
 def get_or_create_group_share_link(
     group_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -261,6 +284,7 @@ def get_or_create_group_share_link(
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
 
+    base_url = get_frontend_base_url(request)
     existing_link = db.query(GroupInvitation).filter(
         GroupInvitation.group_id == group_id,
         GroupInvitation.invitee_email == None,
@@ -292,7 +316,7 @@ def get_or_create_group_share_link(
         invitee_email=None,
         invitee_phone=None,
         token=existing_link.token,
-        invite_link=f"http://127.0.0.1:5173/?invite={existing_link.token}",
+        invite_link=f"{base_url}/?invite={existing_link.token}",
         status=existing_link.status,
         is_registered=False,
         created_at=existing_link.created_at.strftime("%b %d, %Y")

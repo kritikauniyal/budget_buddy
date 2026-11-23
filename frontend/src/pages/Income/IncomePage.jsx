@@ -102,8 +102,8 @@ export default function IncomePage() {
     <div className="module-page">
       <div className="welcome-section">
         <div>
-          <h2>Income Management</h2>
-          <p>Track all salary, freelance, business, and investment revenue streams.</p>
+          <h2>Income</h2>
+          <p>Keep track of all your salary, freelance earnings, gifts, and cash inflows.</p>
         </div>
 
         <button className="primary-button" onClick={openAddModal}>
@@ -115,7 +115,7 @@ export default function IncomePage() {
       <div className="stats-grid" style={{ marginBottom: "24px" }}>
         <div className="stat-card">
           <div className="stat-top">
-            <span>Total Recorded Income</span>
+            <span>Total Income</span>
             <div className="stat-icon green">
               <TrendingUp size={21} />
             </div>
@@ -123,7 +123,7 @@ export default function IncomePage() {
           <h2>₹{totalIncome.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</h2>
           <div className="stat-footer">
             <span className="positive-change">{incomes.length} Entries</span>
-            <span>Active ledger</span>
+            <span>Total inflows recorded</span>
           </div>
         </div>
       </div>

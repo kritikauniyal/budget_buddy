@@ -41,6 +41,14 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    reset_token: str
+    new_password: str
+
 class UpdateProfileRequest(BaseModel):
     full_name: str
     phone: Optional[str] = None
@@ -271,3 +279,27 @@ class GroupInvitationOut(BaseModel):
     status: str
     is_registered: bool
     created_at: str
+
+# Recurring Expense Schemas
+class RecurringExpenseCreate(BaseModel):
+    title: str
+    amount: Decimal
+    category_name: Optional[str] = "Bills"
+    frequency: Optional[str] = "monthly"
+    start_date: Optional[str] = None
+    next_due_date: Optional[str] = None
+    notes: Optional[str] = None
+
+class RecurringExpenseOut(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    amount: float
+    category_name: str
+    frequency: str
+    start_date: str
+    next_due_date: str
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: str
+

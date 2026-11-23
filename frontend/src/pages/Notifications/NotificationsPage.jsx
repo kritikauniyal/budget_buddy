@@ -46,8 +46,8 @@ export default function NotificationsPage() {
     <div className="module-page">
       <div className="welcome-section">
         <div>
-          <h2>Notifications Center</h2>
-          <p>Real-time budget alerts, approval statuses, and financial advisories.</p>
+          <h2>Notifications</h2>
+          <p>Helpful alerts on your monthly budget limits and shared group expenses.</p>
         </div>
 
         {unreadCount > 0 && (

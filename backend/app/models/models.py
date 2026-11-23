@@ -281,3 +281,22 @@ class Notification(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="notifications")
+
+
+class RecurringExpense(Base):
+    __tablename__ = "recurring_expenses"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(150), nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
+    category_name = Column(String(100), default="Bills")
+    frequency = Column(String(50), default="monthly")  # daily, weekly, monthly, yearly
+    start_date = Column(Date, default=datetime.date.today, nullable=False)
+    next_due_date = Column(Date, default=datetime.date.today, nullable=False)
+    is_active = Column(Boolean, default=True)
+    notes = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User")
+

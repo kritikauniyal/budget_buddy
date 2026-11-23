@@ -8,6 +8,7 @@ import ExpensesPage from "./pages/Expenses/ExpensesPage";
 import TransactionsPage from "./pages/Transactions/TransactionsPage";
 import CategoriesPage from "./pages/Categories/CategoriesPage";
 import BudgetsPage from "./pages/Budgets/BudgetsPage";
+import RecurringPage from "./pages/Recurring/RecurringPage";
 import GroupInboxPage from "./pages/GroupInbox/GroupInboxPage";
 import GroupsPage from "./pages/Groups/GroupsPage";
 import ReportsPage from "./pages/Reports/ReportsPage";
@@ -186,6 +187,8 @@ function MainApp() {
         return <CategoriesPage />;
       case "Budgets":
         return <BudgetsPage />;
+      case "Recurring":
+        return <RecurringPage />;
       case "Reports":
         return <ReportsPage />;
       case "Group Inbox":

@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { X, Receipt, Calculator, Check, AlertCircle, Users } from "lucide-react";
+import { X, Receipt, Check, AlertCircle, Percent, Hash, DollarSign, Users, UserCheck } from "lucide-react";
 import api from "../../services/api";
 
 const EXPENSE_CATEGORIES = [
   { name: "Food", icon: "🍔", color: "#7557E8" },
-  { name: "Travel", icon: "🚕", color: "#F4AE50" },
-  { name: "Stay", icon: "🏨", color: "#5794EA" },
-  { name: "Bills", icon: "💡", color: "#22B8A0" },
+  { name: "Grocery", icon: "🛒", color: "#10b981" },
+  { name: "Rent", icon: "🏠", color: "#3b82f6" },
+  { name: "Electricity", icon: "⚡", color: "#f59e0b" },
+  { name: "Water", icon: "💧", color: "#06b6d4" },
+  { name: "Internet", icon: "🌐", color: "#8b5cf6" },
+  { name: "Transportation", icon: "🚗", color: "#ec4899" },
   { name: "Shopping", icon: "🛍️", color: "#E58DAA" },
   { name: "Entertainment", icon: "🎟️", color: "#A855F7" },
+  { name: "Travel", icon: "✈️", color: "#F4AE50" },
+  { name: "Medical", icon: "🏥", color: "#ef4444" },
+  { name: "Education", icon: "📚", color: "#6366f1" },
   { name: "Other", icon: "📋", color: "#64748B" },
 ];
 
@@ -21,9 +27,11 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split("T")[0]);
   const [description, setDescription] = useState("");
 
-  // Split logic
-  const [splitType, setSplitType] = useState("equal"); // 'equal', 'custom', 'single'
+  // Split Types: 'equal' | 'exact' | 'percentage' | 'shares' | 'custom'
+  const [splitType, setSplitType] = useState("equal");
   const [selectedParticipants, setSelectedParticipants] = useState(() => members.map((m) => m.user_id));
+
+  // Exact / Custom amounts
   const [customSplits, setCustomSplits] = useState(() => {
     const init = {};
     members.forEach((m) => {
@@ -31,20 +39,44 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
     });
     return init;
   });
-  const [singleRecipient, setSingleRecipient] = useState(members[0]?.user_id || 1);
+
+  // Percentage inputs
+  const [percentSplits, setPercentSplits] = useState(() => {
+    const init = {};
+    const equalPct = members.length > 0 ? (100 / members.length).toFixed(1) : 0;
+    members.forEach((m) => {
+      init[m.user_id] = equalPct;
+    });
+    return init;
+  });
+
+  // Shares inputs (e.g. 1, 2, 1)
+  const [shareCounts, setShareCounts] = useState(() => {
+    const init = {};
+    members.forEach((m) => {
+      init[m.user_id] = "1";
+    });
+    return init;
+  });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Update selected participants if members change
   useEffect(() => {
     if (members.length > 0) {
       setSelectedParticipants(members.map((m) => m.user_id));
-      const init = {};
+      const initC = {};
+      const initP = {};
+      const initS = {};
+      const eqP = (100 / members.length).toFixed(1);
       members.forEach((m) => {
-        init[m.user_id] = "";
+        initC[m.user_id] = "";
+        initP[m.user_id] = eqP;
+        initS[m.user_id] = "1";
       });
-      setCustomSplits(init);
+      setCustomSplits(initC);
+      setPercentSplits(initP);
+      setShareCounts(initS);
     }
   }, [members]);
 
@@ -54,7 +86,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
   const toggleParticipant = (userId) => {
     setSelectedParticipants((prev) => {
       if (prev.includes(userId)) {
-        if (prev.length === 1) return prev; // Keep at least one
+        if (prev.length === 1) return prev;
         return prev.filter((id) => id !== userId);
       } else {
         return [...prev, userId];
@@ -62,17 +94,15 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
     });
   };
 
-  // Custom split input change
-  const handleCustomChange = (userId, val) => {
-    setCustomSplits((prev) => ({
-      ...prev,
-      [userId]: val,
-    }));
-  };
-
-  // Calculate sum of custom splits
+  // Calculations for custom/exact
   const customSum = Object.values(customSplits).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
   const customDiff = numAmount - customSum;
+
+  // Calculations for percentage
+  const totalPercent = Object.values(percentSplits).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+
+  // Calculations for shares
+  const totalShares = Object.values(shareCounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,7 +124,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
         setError("Please select at least one participant.");
         return;
       }
-    } else if (splitType === "custom") {
+    } else if (splitType === "exact" || splitType === "custom") {
       if (Math.abs(customDiff) > 0.05) {
         setError(`Sum of splits (₹${customSum.toFixed(2)}) must match total amount (₹${numAmount.toFixed(2)}). Difference: ₹${customDiff.toFixed(2)}`);
         return;
@@ -103,8 +133,45 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
         user_id: m.user_id,
         owed_amount: parseFloat(customSplits[m.user_id]) || 0,
       }));
-    } else if (splitType === "single") {
-      participantIds = [singleRecipient];
+    } else if (splitType === "percentage") {
+      if (Math.abs(totalPercent - 100) > 0.1) {
+        setError(`Sum of percentages must equal 100%. Currently: ${totalPercent.toFixed(1)}%`);
+        return;
+      }
+      payloadSplits = members.map((m) => {
+        const pct = parseFloat(percentSplits[m.user_id]) || 0;
+        const owed = Math.round(((numAmount * pct) / 100) * 100) / 100;
+        return {
+          user_id: m.user_id,
+          owed_amount: owed,
+          percentage: pct,
+        };
+      });
+      // Adjust remainder cents
+      const calcTotal = payloadSplits.reduce((acc, curr) => acc + curr.owed_amount, 0);
+      const diff = Math.round((numAmount - calcTotal) * 100) / 100;
+      if (payloadSplits.length > 0 && diff !== 0) {
+        payloadSplits[0].owed_amount = Math.round((payloadSplits[0].owed_amount + diff) * 100) / 100;
+      }
+    } else if (splitType === "shares") {
+      if (totalShares <= 0) {
+        setError("Total shares must be greater than 0.");
+        return;
+      }
+      payloadSplits = members.map((m) => {
+        const sh = parseFloat(shareCounts[m.user_id]) || 0;
+        const owed = Math.round(((numAmount * sh) / totalShares) * 100) / 100;
+        return {
+          user_id: m.user_id,
+          owed_amount: owed,
+        };
+      });
+      // Adjust remainder cents
+      const calcTotal = payloadSplits.reduce((acc, curr) => acc + curr.owed_amount, 0);
+      const diff = Math.round((numAmount - calcTotal) * 100) / 100;
+      if (payloadSplits.length > 0 && diff !== 0) {
+        payloadSplits[0].owed_amount = Math.round((payloadSplits[0].owed_amount + diff) * 100) / 100;
+      }
     }
 
     setLoading(true);
@@ -116,7 +183,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
         amount: numAmount,
         category_name: categoryName,
         paid_by: paidBy,
-        split_type: splitType,
+        split_type: splitType === "equal" ? "equal" : "custom",
         expense_date: expenseDate,
         payment_method: paymentMethod,
         description: description.trim() || null,
@@ -144,7 +211,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-card" style={{ maxWidth: "620px" }}>
+      <div className="modal-card" style={{ maxWidth: "640px" }}>
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div className="modal-icon-badge" style={{ background: "rgba(34, 184, 160, 0.12)", color: "#0d9488" }}>
@@ -178,7 +245,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Dinner, Fuel, Airbnb"
+                  placeholder="e.g. Grocery, Room Rent, Dinner"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -244,66 +311,46 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
               </div>
             </div>
 
-            {/* Split Type Selector */}
-            <div style={{ marginTop: "14px", borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
-              <label style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}>Split Type</label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginBottom: "14px" }}>
-                <button
-                  type="button"
-                  onClick={() => setSplitType("equal")}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: "8px",
-                    border: splitType === "equal" ? "2px solid #7557E8" : "1px solid #e2e8f0",
-                    background: splitType === "equal" ? "rgba(117, 87, 232, 0.08)" : "#fff",
-                    color: splitType === "equal" ? "#7557E8" : "#334155",
-                    fontWeight: splitType === "equal" ? 600 : 400,
-                    cursor: "pointer",
-                    fontSize: "0.85rem"
-                  }}
-                >
-                  ⚖️ Split Equally
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSplitType("custom")}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: "8px",
-                    border: splitType === "custom" ? "2px solid #7557E8" : "1px solid #e2e8f0",
-                    background: splitType === "custom" ? "rgba(117, 87, 232, 0.08)" : "#fff",
-                    color: splitType === "custom" ? "#7557E8" : "#334155",
-                    fontWeight: splitType === "custom" ? 600 : 400,
-                    cursor: "pointer",
-                    fontSize: "0.85rem"
-                  }}
-                >
-                  🔢 Custom / Exact
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSplitType("single")}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: "8px",
-                    border: splitType === "single" ? "2px solid #7557E8" : "1px solid #e2e8f0",
-                    background: splitType === "single" ? "rgba(117, 87, 232, 0.08)" : "#fff",
-                    color: splitType === "single" ? "#7557E8" : "#334155",
-                    fontWeight: splitType === "single" ? 600 : 400,
-                    cursor: "pointer",
-                    fontSize: "0.85rem"
-                  }}
-                >
-                  👤 Single Member
-                </button>
+            {/* 5 SPLIT OPTIONS SELECTOR */}
+            <div style={{ marginTop: "16px", borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
+              <label style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}>
+                Expense Split Options
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(105px, 1fr))", gap: "6px", marginBottom: "14px" }}>
+                {[
+                  { id: "equal", label: "⚖️ Equal" },
+                  { id: "exact", label: "💵 Exact ₹" },
+                  { id: "percentage", label: "📊 Percent %" },
+                  { id: "shares", label: "🔢 Shares" },
+                  { id: "custom", label: "✨ Custom" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSplitType(tab.id)}
+                    style={{
+                      padding: "8px 6px",
+                      borderRadius: "8px",
+                      border: splitType === tab.id ? "2px solid #7557E8" : "1px solid #e2e8f0",
+                      background: splitType === tab.id ? "rgba(117, 87, 232, 0.08)" : "#fff",
+                      color: splitType === tab.id ? "#7557E8" : "#334155",
+                      fontWeight: splitType === tab.id ? 700 : 500,
+                      cursor: "pointer",
+                      fontSize: "0.82rem",
+                      textAlign: "center"
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              {/* EQUAL SPLIT UI */}
+              {/* 1. EQUAL SPLIT */}
               {splitType === "equal" && (
                 <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", fontSize: "0.85rem" }}>
                     <span>Included Members ({selectedParticipants.length}):</span>
-                    <span style={{ fontWeight: 600, color: "#7557E8" }}>
+                    <span style={{ fontWeight: 700, color: "#7557E8" }}>
                       ₹{perPersonShare} / person
                     </span>
                   </div>
@@ -348,17 +395,17 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
                 </div>
               )}
 
-              {/* CUSTOM SPLIT UI */}
-              {splitType === "custom" && (
+              {/* 2. EXACT AMOUNT & 5. CUSTOM SPLIT */}
+              {(splitType === "exact" || splitType === "custom") && (
                 <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "0.84rem" }}>
-                    <span>Specify amount owed by each member:</span>
+                    <span>Enter exact amount each person pays:</span>
                     <span style={{
-                      fontWeight: 600,
+                      fontWeight: 700,
                       color: Math.abs(customDiff) < 0.05 ? "#10b981" : "#ef4444"
                     }}>
-                      Entered: ₹{customSum.toFixed(2)} / ₹{numAmount.toFixed(2)}
-                      {Math.abs(customDiff) >= 0.05 && ` (Rem: ₹${customDiff.toFixed(2)})`}
+                      Total: ₹{customSum.toFixed(2)} / ₹{numAmount.toFixed(2)}
+                      {Math.abs(customDiff) >= 0.05 && ` (Diff: ₹${customDiff.toFixed(2)})`}
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -382,7 +429,7 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
                             min="0"
                             placeholder="0.00"
                             value={customSplits[m.user_id] || ""}
-                            onChange={(e) => handleCustomChange(m.user_id, e.target.value)}
+                            onChange={(e) => setCustomSplits({ ...customSplits, [m.user_id]: e.target.value })}
                             style={{ padding: "6px 8px 6px 22px", fontSize: "0.85rem", width: "100%" }}
                           />
                         </div>
@@ -392,23 +439,104 @@ export default function AddGroupExpenseModal({ groupId, members = [], currentUse
                 </div>
               )}
 
-              {/* SINGLE MEMBER SPLIT UI */}
-              {splitType === "single" && (
+              {/* 3. PERCENTAGE SPLIT */}
+              {splitType === "percentage" && (
                 <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
-                  <label style={{ fontSize: "0.84rem", display: "block", marginBottom: "6px" }}>
-                    Who owes this entire amount (100%)?
-                  </label>
-                  <select
-                    value={singleRecipient}
-                    onChange={(e) => setSingleRecipient(parseInt(e.target.value))}
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    {members.map((m) => (
-                      <option key={m.user_id} value={m.user_id}>
-                        {m.full_name} (owes ₹{numAmount.toFixed(2)})
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "0.84rem" }}>
+                    <span>Assign percentage to each member:</span>
+                    <span style={{
+                      fontWeight: 700,
+                      color: Math.abs(totalPercent - 100) < 0.1 ? "#10b981" : "#ef4444"
+                    }}>
+                      Total: {totalPercent.toFixed(1)}% / 100%
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {members.map((m) => {
+                      const pct = parseFloat(percentSplits[m.user_id]) || 0;
+                      const calculatedOwed = ((numAmount * pct) / 100).toFixed(2);
+                      return (
+                        <div
+                          key={m.user_id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            fontSize: "0.85rem"
+                          }}
+                        >
+                          <div>
+                            <strong>{m.full_name}</strong>
+                            <span style={{ color: "#7557E8", marginLeft: "8px", fontSize: "0.8rem" }}>
+                              (₹{calculatedOwed})
+                            </span>
+                          </div>
+                          <div style={{ position: "relative", width: "110px" }}>
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              placeholder="0"
+                              value={percentSplits[m.user_id] || ""}
+                              onChange={(e) => setPercentSplits({ ...percentSplits, [m.user_id]: e.target.value })}
+                              style={{ padding: "6px 24px 6px 8px", fontSize: "0.85rem", width: "100%" }}
+                            />
+                            <span style={{ position: "absolute", right: "8px", top: "7px", color: "#64748b", fontSize: "0.85rem" }}>%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. SHARES SPLIT */}
+              {splitType === "shares" && (
+                <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "12px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", fontSize: "0.84rem" }}>
+                    <span>Assign proportion of shares (e.g. 1, 2, etc.):</span>
+                    <span style={{ fontWeight: 700, color: "#7557E8" }}>
+                      Total: {totalShares} shares
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {members.map((m) => {
+                      const sh = parseFloat(shareCounts[m.user_id]) || 0;
+                      const calculatedOwed = totalShares > 0 ? ((numAmount * sh) / totalShares).toFixed(2) : "0.00";
+                      return (
+                        <div
+                          key={m.user_id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            fontSize: "0.85rem"
+                          }}
+                        >
+                          <div>
+                            <strong>{m.full_name}</strong>
+                            <span style={{ color: "#7557E8", marginLeft: "8px", fontSize: "0.8rem" }}>
+                              (₹{calculatedOwed})
+                            </span>
+                          </div>
+                          <div style={{ width: "90px" }}>
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="1"
+                              value={shareCounts[m.user_id] || ""}
+                              onChange={(e) => setShareCounts({ ...shareCounts, [m.user_id]: e.target.value })}
+                              style={{ padding: "6px 8px", fontSize: "0.85rem", width: "100%", textAlign: "center" }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

@@ -39,8 +39,10 @@ import RecordSettlementModal from "./RecordSettlementModal";
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "expenses", label: "Expenses" },
-  { id: "balances", label: "Balances & Settlements" },
-  { id: "members", label: "Members & Invites" },
+  { id: "balances", label: "Balances" },
+  { id: "members", label: "Members" },
+  { id: "activity", label: "Activity" },
+  { id: "reports", label: "Reports" },
   { id: "settings", label: "Settings" },
 ];
 
@@ -268,7 +270,9 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
           borderTop: "1px solid #f1f5f9",
           marginTop: "18px",
           paddingTop: "12px",
-          overflowX: "auto"
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none"
         }}>
           {TABS.map((t) => (
             <button
@@ -826,6 +830,185 @@ export default function GroupDetailView({ groupId, currentUser, onBack }) {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: ACTIVITY (Settlement & Expense Activity Feed) */}
+      {activeTab === "activity" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Settlements Activity */}
+          <div style={{ background: "#ffffff", padding: "20px", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>
+            <h3 style={{ margin: "0 0 14px", fontSize: "1.05rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+              <Wallet size={18} color="#7557E8" />
+              Settlement Records ({settlements.length})
+            </h3>
+            {settlements.length === 0 ? (
+              <p style={{ color: "#94a3b8", fontSize: "0.88rem", margin: 0, padding: "12px 0" }}>
+                No settlements recorded yet. When members settle up, payment records will appear here.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {settlements.map((s) => (
+                  <div
+                    key={s.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 14px",
+                      background: "#f8fafc",
+                      borderRadius: "10px",
+                      border: "1px solid #e2e8f0"
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: "0.9rem", fontWeight: 600 }}>
+                        <span style={{ color: "#4f46e5" }}>{s.payer_name}</span> paid <span style={{ color: "#10b981" }}>{s.receiver_name}</span>
+                      </div>
+                      <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "2px" }}>
+                        Method: {s.payment_method} • {s.settled_at} {s.notes ? `• "${s.notes}"` : ""}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", fontWeight: 700, color: "#10b981", fontSize: "0.95rem" }}>
+                      ₹{s.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Expense Logs */}
+          <div style={{ background: "#ffffff", padding: "20px", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>
+            <h3 style={{ margin: "0 0 14px", fontSize: "1.05rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
+              <Receipt size={18} color="#0d9488" />
+              Expense Activity Log ({expenses.length})
+            </h3>
+            {expenses.length === 0 ? (
+              <p style={{ color: "#94a3b8", fontSize: "0.88rem", margin: 0, padding: "12px 0" }}>
+                No expenses logged yet in this group.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {expenses.map((exp) => (
+                  <div
+                    key={exp.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 14px",
+                      background: "#f8fafc",
+                      borderRadius: "10px",
+                      border: "1px solid #e2e8f0"
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: "0.9rem", fontWeight: 600 }}>
+                        {exp.title}
+                      </div>
+                      <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "2px" }}>
+                        Paid by {exp.payer_name} • {exp.expense_date} • {exp.category_name} ({exp.payment_method})
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 700, color: "#ef4444", fontSize: "0.95rem" }}>
+                        ₹{exp.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#7557E8", textTransform: "capitalize" }}>
+                        {exp.split_type} split
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: REPORTS (Group Visual Analytics) */}
+      {activeTab === "reports" && dashboard && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* Key KPI Cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+            <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.8rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Total Group Spending</div>
+              <h2 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#191b35", margin: "6px 0 0" }}>
+                ₹{dashboard.total_expenses.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </h2>
+            </div>
+            <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.8rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>This Month</div>
+              <h2 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#7557E8", margin: "6px 0 0" }}>
+                ₹{dashboard.this_month_expenses.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </h2>
+            </div>
+            <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: "14px", border: "1px solid #e2e8f0" }}>
+              <div style={{ fontSize: "0.8rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Average Per Member</div>
+              <h2 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#0d9488", margin: "6px 0 0" }}>
+                ₹{members.length > 0 ? (dashboard.total_expenses / members.length).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+              </h2>
+            </div>
+          </div>
+
+          {/* Charts Row */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px" }}>
+            {/* Category Chart */}
+            <div style={{ background: "#ffffff", padding: "20px", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>
+              <h4 style={{ margin: "0 0 14px", fontSize: "1rem", fontWeight: 700 }}>Group Category Breakdown</h4>
+              <div style={{ height: "240px", width: "100%" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={dashboard.category_breakdown}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={3}
+                    >
+                      {dashboard.category_breakdown.map((entry, index) => (
+                        <Cell key={`rep-cell-${index}`} fill={entry.color || "#7557E8"} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(val) => `₹${Number(val).toLocaleString()}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "10px" }}>
+                {dashboard.category_breakdown.map((c, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: c.color || "#7557E8" }} />
+                    <span>{c.name}: <strong>₹{c.value.toLocaleString()}</strong></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Member Net Balance Breakdown */}
+            <div style={{ background: "#ffffff", padding: "20px", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)" }}>
+              <h4 style={{ margin: "0 0 14px", fontSize: "1rem", fontWeight: 700 }}>Member Contribution Summary</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {dashboard.member_summaries.map((m, idx) => (
+                  <div key={idx} style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <strong>{m.name}</strong>
+                      <span style={{ fontWeight: 700, color: m.net > 0 ? "#10b981" : m.net < 0 ? "#ef4444" : "#64748b" }}>
+                        {m.net > 0 ? `+₹${m.net.toLocaleString()}` : m.net < 0 ? `-₹${Math.abs(m.net).toLocaleString()}` : "Settled"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+                      <span>Total Paid: ₹{m.paid.toLocaleString()}</span>
+                      <span>Total Share: ₹{m.share.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}

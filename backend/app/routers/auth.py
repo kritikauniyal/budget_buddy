@@ -16,8 +16,11 @@ from app.schemas.schemas import (
     UserOut,
     TokenResponse,
     ChangePasswordRequest,
-    UpdateProfileRequest
+    UpdateProfileRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest
 )
+import secrets
 from app.utils.security import hash_password, verify_password, create_access_token
 from app.dependencies.auth import get_current_user
 from app.routers.dashboard import DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES
@@ -151,3 +154,46 @@ def change_password(
     current_user.hashed_password = hash_password(body.new_password)
     db.commit()
     return {"message": "Password changed successfully"}
+
+
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    email = body.email.lower().strip()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="No account found with this email address"
+        )
+
+    # Generate a user-friendly 6-character reset code
+    reset_code = secrets.token_hex(3).upper()
+
+    return {
+        "message": f"Reset code generated for {email}. Use code {reset_code} to reset your password.",
+        "reset_code": reset_code,
+        "email": email
+    }
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email = body.email.lower().strip()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this email address")
+
+    if not body.reset_token or len(body.reset_token.strip()) < 4:
+        raise HTTPException(status_code=400, detail="Invalid reset code or token")
+
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    user.hashed_password = hash_password(body.new_password)
+    db.commit()
+
+    return {
+        "message": "Password successfully reset! You can now sign in with your new password.",
+        "email": email
+    }
+

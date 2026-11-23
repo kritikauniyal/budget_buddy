@@ -90,25 +90,10 @@ export default function GroupsPage({ currentUser, selectedGroupId: propGroupId =
   return (
     <div className="groups-page">
       {/* Top Banner & Header */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "16px",
-        marginBottom: "24px",
-        background: "#ffffff",
-        padding: "20px 24px",
-        borderRadius: "16px",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)"
-      }}>
+      <div className="welcome-section">
         <div>
-          <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}>
-            Group Expense Sharing
-          </h2>
-          <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "0.88rem" }}>
-            Split trip expenses, roommate rent, dinner bills, and settle balances effortlessly
-          </p>
+          <h2>Group Expense Sharing</h2>
+          <p>Split trip expenses, roommate rent, dinner bills, and settle balances effortlessly</p>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>

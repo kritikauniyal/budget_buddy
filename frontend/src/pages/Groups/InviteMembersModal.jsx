@@ -10,7 +10,6 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
 
   const [existingInvites, setExistingInvites] = useState([]);
   const [universalInvite, setUniversalInvite] = useState(null);
-  const [useNetworkIp, setUseNetworkIp] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedToken, setCopiedToken] = useState(null);
@@ -36,12 +35,7 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
 
   const formatShareUrl = (token) => {
     if (!token) return "";
-    if (useNetworkIp) {
-      return `http://192.168.1.9:5173/?invite=${token}`;
-    }
-    const host = window.location.hostname === "localhost" ? "127.0.0.1" : window.location.hostname;
-    const port = window.location.port ? `:${window.location.port}` : "";
-    return `http://${host}${port}/?invite=${token}`;
+    return `${window.location.origin}/?invite=${token}`;
   };
 
   const getWhatsAppShareUrl = (token, phoneVal = "") => {
@@ -207,25 +201,6 @@ export default function InviteMembersModal({ group, onClose, onMembersInvited })
                 </div>
               </div>
 
-              {/* Host/IP mode selector */}
-              <button
-                type="button"
-                onClick={() => setUseNetworkIp(!useNetworkIp)}
-                style={{
-                  background: useNetworkIp ? "#e0f2fe" : "#f1f5f9",
-                  color: useNetworkIp ? "#0369a1" : "#475569",
-                  border: "1px solid",
-                  borderColor: useNetworkIp ? "#bae6fd" : "#cbd5e1",
-                  borderRadius: "6px",
-                  fontSize: "0.72rem",
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  fontWeight: 600
-                }}
-                title={useNetworkIp ? "Using Wi-Fi LAN IP (192.168.1.9) so phones can open the link" : "Using Localhost (127.0.0.1)"}
-              >
-                {useNetworkIp ? "📱 Mobile Wi-Fi Link (192.168.1.9)" : "💻 PC Link (127.0.0.1)"}
-              </button>
             </div>
 
             <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "10px", flexWrap: "wrap" }}>

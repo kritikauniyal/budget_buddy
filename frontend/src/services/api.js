@@ -85,6 +85,24 @@ export const api = {
     });
   },
 
+  forgotPassword: async (email) => {
+    return await request("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  resetPassword: async (email, resetToken, newPassword) => {
+    return await request("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        reset_token: resetToken,
+        new_password: newPassword,
+      }),
+    });
+  },
+
   // Dashboard API
   getDashboard: async (period = "this_month", startDate = "", endDate = "") => {
     const parts = [`period=${encodeURIComponent(period)}`];
@@ -401,6 +419,31 @@ export const api = {
       method: "DELETE",
     });
   },
+
+  // Recurring Expenses
+  getRecurringExpenses: async () => {
+    return await request("/api/recurring");
+  },
+
+  createRecurringExpense: async (data) => {
+    return await request("/api/recurring", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteRecurringExpense: async (id) => {
+    return await request(`/api/recurring/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  logRecurringExpenseNow: async (id) => {
+    return await request(`/api/recurring/${id}/log-now`, {
+      method: "POST",
+    });
+  },
 };
+
 
 export default api;

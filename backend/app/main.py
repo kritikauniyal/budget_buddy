@@ -19,7 +19,8 @@ from app.routers import (
     reports,
     notifications,
     groups,
-    invitations
+    invitations,
+    recurring
 )
 
 # Relative directory paths
@@ -69,6 +70,7 @@ app.include_router(reports.router)
 app.include_router(notifications.router)
 app.include_router(groups.router)
 app.include_router(invitations.router)
+app.include_router(recurring.router)
 
 @app.get("/api/logo.png", tags=["Branding"])
 def get_brand_logo():
@@ -83,15 +85,28 @@ def get_brand_logo():
             return FileResponse(p, media_type="image/png")
     raise HTTPException(status_code=404, detail="Logo not found")
 
-# Serve Frontend SPA on Render if frontend/dist exists
-if os.path.exists(FRONTEND_DIST) and os.path.exists(os.path.join(FRONTEND_DIST, "index.html")):
-    assets_path = os.path.join(FRONTEND_DIST, "assets")
+# Serve Frontend SPA on Render from any valid dist folder
+POSSIBLE_DIST_DIRS = [
+    FRONTEND_DIST,
+    os.path.join(STATIC_DIR, "dist"),
+    os.path.join(PROJECT_ROOT, "backend", "app", "static", "dist"),
+    os.path.join(PROJECT_ROOT, "dist"),
+]
+
+ACTIVE_DIST = None
+for candidate in POSSIBLE_DIST_DIRS:
+    if os.path.exists(candidate) and os.path.exists(os.path.join(candidate, "index.html")):
+        ACTIVE_DIST = candidate
+        break
+
+if ACTIVE_DIST:
+    assets_path = os.path.join(ACTIVE_DIST, "assets")
     if os.path.exists(assets_path):
         app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
     @app.get("/", tags=["Frontend"])
     async def serve_root_frontend():
-        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
+        return FileResponse(os.path.join(ACTIVE_DIST, "index.html"))
 
     @app.get("/{full_path:path}", tags=["Frontend"])
     async def serve_spa_frontend(full_path: str):
@@ -104,10 +119,10 @@ if os.path.exists(FRONTEND_DIST) and os.path.exists(os.path.join(FRONTEND_DIST, 
         ):
             raise HTTPException(status_code=404, detail="API endpoint not found")
 
-        target_file = os.path.join(FRONTEND_DIST, full_path)
+        target_file = os.path.join(ACTIVE_DIST, full_path)
         if os.path.isfile(target_file):
             return FileResponse(target_file)
-        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
+        return FileResponse(os.path.join(ACTIVE_DIST, "index.html"))
 else:
     @app.get("/", tags=["Root"])
     def root():

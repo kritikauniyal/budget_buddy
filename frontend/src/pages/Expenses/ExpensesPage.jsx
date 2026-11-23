@@ -117,8 +117,8 @@ export default function ExpensesPage() {
     <div className="module-page">
       <div className="welcome-section">
         <div>
-          <h2>Expense Management</h2>
-          <p>Record, categorize, and monitor daily expenditures across all payment channels.</p>
+          <h2>Expenses</h2>
+          <p>Track your daily spending and keep all your receipts organized.</p>
         </div>
 
         <button className="primary-button" onClick={openAddModal}>
@@ -130,15 +130,15 @@ export default function ExpensesPage() {
       <div className="stats-grid" style={{ marginBottom: "24px" }}>
         <div className="stat-card">
           <div className="stat-top">
-            <span>Filtered Expenses Total</span>
+            <span>Total Spent</span>
             <div className="stat-icon orange">
               <Receipt size={21} />
             </div>
           </div>
           <h2>₹{totalExpense.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</h2>
           <div className="stat-footer">
-            <span className="negative-change">{expenses.length} Records</span>
-            <span>Matched in filter</span>
+            <span className="negative-change">{expenses.length} Expenses</span>
+            <span>Recorded in this view</span>
           </div>
         </div>
       </div>

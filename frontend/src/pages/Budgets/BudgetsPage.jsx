@@ -56,13 +56,13 @@ export default function BudgetsPage() {
     <div className="module-page">
       <div className="welcome-section">
         <div>
-          <h2>Monthly Budget Management</h2>
-          <p>Set spending targets, avoid overdrafts, and receive real-time threshold alerts.</p>
+          <h2>Monthly Budget</h2>
+          <p>Set spending limits to keep your money on track and save more each month.</p>
         </div>
 
         <button className="primary-button" onClick={() => setShowModal(true)}>
           <Edit3 size={17} />
-          Configure Budget
+          Set Monthly Limit
         </button>
       </div>
 
@@ -71,8 +71,8 @@ export default function BudgetsPage() {
         <div className="budget-alert-banner danger">
           <AlertOctagon size={22} />
           <div>
-            <strong>Budget Exceeded Alert (100%+)</strong>
-            <p>You have spent ₹{budgetData?.total_spent?.toLocaleString("en-IN")}, exceeding your monthly allocation of ₹{budgetData?.total_budget?.toLocaleString("en-IN")}.</p>
+            <strong>Monthly Budget Exceeded</strong>
+            <p>You have spent ₹{budgetData?.total_spent?.toLocaleString("en-IN")}, which is above your monthly goal of ₹{budgetData?.total_budget?.toLocaleString("en-IN")}.</p>
           </div>
         </div>
       )}
@@ -81,8 +81,8 @@ export default function BudgetsPage() {
         <div className="budget-alert-banner warning">
           <AlertTriangle size={22} />
           <div>
-            <strong>Budget Warning Alert (80% Reached)</strong>
-            <p>You have utilized {utilization}% of your total monthly budget. Only ₹{budgetData?.remaining_budget?.toLocaleString("en-IN")} remains.</p>
+            <strong>80% of Monthly Budget Used</strong>
+            <p>You have used {utilization}% of your budget for this month. You have ₹{budgetData?.remaining_budget?.toLocaleString("en-IN")} left to spend.</p>
           </div>
         </div>
       )}
@@ -91,7 +91,7 @@ export default function BudgetsPage() {
       <div className="budget-overview-card">
         <div className="budget-overview-header">
           <div>
-            <span>Overall Monthly Budget</span>
+            <span>Total Monthly Budget</span>
             <h3>₹{budgetData?.total_budget?.toLocaleString("en-IN")}</h3>
           </div>
 

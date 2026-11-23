@@ -54,9 +54,9 @@ export default function Layout({
           <div className="bottom-note">
             <span>
               <CheckCircle2 size={15} />
-              Budget Buddy v1.0
+              Budget Buddy
             </span>
-            <span>Professional Personal Expense & Budget Management System</span>
+            <span>Smart, Simple Money Management for Everyday Life</span>
           </div>
         </div>
 

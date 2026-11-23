@@ -51,29 +51,29 @@ export default function Topbar({
   const getPageSubtitle = (page) => {
     switch (page) {
       case "Dashboard":
-        return "";
+        return "Welcome back! Here's your complete money overview.";
       case "Groups":
-        return " ";
+        return "Split shared expenses with friends, trips, or roommates.";
       case "Income":
-        return "";
+        return "Track your salary, freelance earnings, and cash inflows.";
       case "Expenses":
-        return "";
+        return "Log your daily spending and keep receipts organized.";
       case "Transactions":
-        return "";
+        return "Your complete history of money in and money out.";
       case "Categories":
-        return "";
+        return "Organize your money with custom tags, colors, and icons.";
       case "Budgets":
-        return "";
+        return "Set spending limits and get alerts before you overspend.";
       case "Reports":
-        return "";
+        return "Download spending statements and financial summaries.";
       case "Group Inbox":
-        return "";
+        return "Review and approve shared expenses from your groups.";
       case "Notifications":
-        return "Budget alerts and financial activity updates.";
+        return "Helpful budget alerts and shared expense updates.";
       case "Profile":
-        return "Manage your personal account and password settings.";
+        return "Manage your personal account and security settings.";
       default:
-        return "Smart money management made simple.";
+        return "Smart, simple money management for everyday life.";
     }
   };
 

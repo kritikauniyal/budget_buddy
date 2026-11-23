@@ -6,7 +6,8 @@ import {
   Users,
   ArrowRight,
   Check,
-  ChevronLeft
+  ChevronLeft,
+  Repeat
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -199,6 +200,26 @@ export default function QuickActionSheet({
               </div>
               <ArrowRight size={18} className="sheet-action-arrow" />
             </button>
+
+            {/* 4. Recurring Bills */}
+            <button
+              type="button"
+              className="sheet-action-item recurring-theme"
+              onClick={() => {
+                handleClose();
+                onNavigate("Recurring");
+              }}
+            >
+              <div className="sheet-action-icon" style={{ background: "rgba(117, 87, 232, 0.12)", color: "#7557E8" }}>
+                <Repeat size={22} />
+              </div>
+              <div className="sheet-action-info">
+                <strong>Recurring Bills</strong>
+                <span>Automate monthly rent, broadband, subscriptions</span>
+              </div>
+              <ArrowRight size={18} className="sheet-action-arrow" />
+            </button>
+
           </div>
         )}
 

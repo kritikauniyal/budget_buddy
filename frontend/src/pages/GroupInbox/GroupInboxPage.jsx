@@ -121,26 +121,26 @@ export default function GroupInboxPage() {
       <div className="welcome-section" style={{ flexWrap: "wrap", gap: "16px" }}>
         <div>
           <h2>Group Inbox</h2>
-          <p>Review and approve shared team or group expenses before they hit your live records.</p>
+          <p>Review shared expenses submitted by group members before adding them to your personal spending.</p>
         </div>
 
         <button className="primary-button" onClick={() => setShowSubmitModal(true)}>
           <Plus size={18} />
-          Submit Shared Expense
+          Submit Group Expense
         </button>
       </div>
 
       <div className="stats-grid" style={{ marginBottom: "24px" }}>
         <div className="stat-card">
           <div className="stat-top">
-            <span>Pending Review</span>
+            <span>Pending Approvals</span>
             <div className="stat-icon purple">
               <Clock size={21} />
             </div>
           </div>
           <h2>{pendingCount} Items</h2>
           <div className="stat-footer">
-            <span className="positive-change">Requires action</span>
+            <span className="positive-change">Awaiting your review</span>
             <span>All Groups</span>
           </div>
         </div>
@@ -165,99 +165,174 @@ export default function GroupInboxPage() {
       </div>
 
       <section className="panel">
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>EXPENSE / SUBMITTER</th>
-                <th>GROUP</th>
-                <th>CATEGORY</th>
-                <th>PAYMENT</th>
-                <th>AMOUNT</th>
-                <th>DATE SUBMITTED</th>
-                <th>STATUS</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
+        {/* Mobile View: Clean Card Feed */}
+        <div className="mobile-tx-feed">
+          {items.length === 0 ? (
+            <div className="empty-tx-mobile">
+              <div className="empty-tx-icon">📥</div>
+              <h5>{loading ? "Loading inbox..." : "No inbox records found"}</h5>
+              <p>Submitted shared expenses from group members will appear here for review.</p>
+              <button
+                type="button"
+                className="empty-add-btn"
+                onClick={() => setShowSubmitModal(true)}
+              >
+                + Submit Expense
+              </button>
+            </div>
+          ) : (
+            items.map((item) => (
+              <div className="mobile-tx-card" key={`mob-inbox-${item.id}`}>
+                <div className="mobile-tx-avatar" style={{ backgroundColor: "#f3e8ff" }}>
+                  <span className="mobile-tx-icon">{item.category_icon || "👥"}</span>
+                </div>
+
+                <div className="mobile-tx-info">
+                  <strong className="mobile-tx-title">{item.title}</strong>
+                  <div className="mobile-tx-meta">
+                    <span className="mobile-tx-cat">{item.group_name || "Group"}</span>
+                    <span className="mobile-tx-dot">•</span>
+                    <span className="mobile-tx-cat">By {item.submitted_by}</span>
+                    <span className="mobile-tx-dot">•</span>
+                    <span className="mobile-tx-date">{item.created_at}</span>
+                  </div>
+                </div>
+
+                <div className="mobile-tx-right">
+                  <span className="mobile-tx-amount" style={{ color: "#1e293b", fontWeight: 700 }}>
+                    ₹{item.amount.toLocaleString("en-IN")}
+                  </span>
+                  {item.status === "pending" ? (
+                    <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        style={{ width: "30px", height: "30px", color: "#10b981", background: "rgba(16, 185, 129, 0.1)" }}
+                        onClick={() => handleApprove(item.id)}
+                        title="Approve"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        style={{ width: "30px", height: "30px", color: "#ef4444", background: "rgba(239, 68, 68, 0.1)" }}
+                        onClick={() => setRejectingId(item.id)}
+                        title="Reject"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span
+                      className={`status-pill ${item.status === "approved" ? "pill-normal" : "pill-danger"}`}
+                      style={{ marginTop: "4px", fontSize: "10px", padding: "2px 6px" }}
+                    >
+                      {item.status === "approved" ? "Approved" : "Rejected"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Detailed Table */}
+        <div className="desktop-table-container">
+          <div className="table-wrapper">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="8" style={{ textAlign: "center", padding: "32px", color: "#8a90a2" }}>
-                    {loading ? "Loading submissions..." : "No inbox records found."}
-                  </td>
+                  <th>EXPENSE / SUBMITTER</th>
+                  <th>GROUP</th>
+                  <th>CATEGORY</th>
+                  <th>PAYMENT</th>
+                  <th>AMOUNT</th>
+                  <th>DATE SUBMITTED</th>
+                  <th>STATUS</th>
+                  <th>ACTIONS</th>
                 </tr>
-              ) : (
-                items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <div>
-                        <strong>{item.title}</strong>
-                        <div style={{ fontSize: "11px", color: "#8a90a2", marginTop: "2px" }}>
-                          By {item.submitted_by} {item.description && `• ${item.description}`}
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="group-badge">
-                        <span>{getGroupIcon(item.group_type)}</span>
-                        <span>{item.group_name || "General Group"}</span>
-                      </span>
-                    </td>
-                    <td>
-                      <span className="payment-badge">
-                        {item.category_icon} {item.category_name}
-                      </span>
-                    </td>
-                    <td>{item.payment_method}</td>
-                    <td className="amount" style={{ color: "#191b35", fontWeight: "700" }}>
-                      ₹{item.amount.toLocaleString("en-IN")}
-                    </td>
-                    <td style={{ fontSize: "12px", color: "#646b7b" }}>{item.created_at}</td>
-                    <td>
-                      {item.status === "pending" && (
-                        <span className="status-pill pill-warning">Pending Review</span>
-                      )}
-                      {item.status === "approved" && (
-                        <span className="status-pill pill-normal">Approved</span>
-                      )}
-                      {item.status === "rejected" && (
-                        <span
-                          className="status-pill pill-danger"
-                          title={item.rejection_reason || "Rejected"}
-                        >
-                          Rejected
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {item.status === "pending" ? (
-                        <div style={{ display: "flex", gap: "6px" }}>
-                          <button
-                            className="action-btn"
-                            style={{ color: "#10b981", background: "rgba(16, 185, 129, 0.1)" }}
-                            onClick={() => handleApprove(item.id)}
-                            title="Approve Expense"
-                          >
-                            <Check size={16} />
-                          </button>
-                          <button
-                            className="action-btn"
-                            style={{ color: "#ef4444", background: "rgba(239, 68, 68, 0.1)" }}
-                            onClick={() => setRejectingId(item.id)}
-                            title="Reject Expense"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: "11px", color: "#9ca3af" }}>Archived</span>
-                      )}
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: "center", padding: "32px", color: "#8a90a2" }}>
+                      {loading ? "Loading submissions..." : "No inbox records found."}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  items.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <div>
+                          <strong>{item.title}</strong>
+                          <div style={{ fontSize: "11px", color: "#8a90a2", marginTop: "2px" }}>
+                            By {item.submitted_by} {item.description && `• ${item.description}`}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="group-badge">
+                          <span>{getGroupIcon(item.group_type)}</span>
+                          <span>{item.group_name || "General Group"}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className="payment-badge">
+                          {item.category_icon} {item.category_name}
+                        </span>
+                      </td>
+                      <td>{item.payment_method}</td>
+                      <td className="amount" style={{ color: "#191b35", fontWeight: "700" }}>
+                        ₹{item.amount.toLocaleString("en-IN")}
+                      </td>
+                      <td style={{ fontSize: "12px", color: "#646b7b" }}>{item.created_at}</td>
+                      <td>
+                        {item.status === "pending" && (
+                          <span className="status-pill pill-warning">Pending Review</span>
+                        )}
+                        {item.status === "approved" && (
+                          <span className="status-pill pill-normal">Approved</span>
+                        )}
+                        {item.status === "rejected" && (
+                          <span
+                            className="status-pill pill-danger"
+                            title={item.rejection_reason || "Rejected"}
+                          >
+                            Rejected
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {item.status === "pending" ? (
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <button
+                              className="action-btn"
+                              style={{ color: "#10b981", background: "rgba(16, 185, 129, 0.1)" }}
+                              onClick={() => handleApprove(item.id)}
+                              title="Approve Expense"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              className="action-btn"
+                              style={{ color: "#ef4444", background: "rgba(239, 68, 68, 0.1)" }}
+                              onClick={() => setRejectingId(item.id)}
+                              title="Reject Expense"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: "11px", color: "#9ca3af" }}>Archived</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

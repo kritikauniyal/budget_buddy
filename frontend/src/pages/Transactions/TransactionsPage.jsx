@@ -39,8 +39,8 @@ export default function TransactionsPage() {
     <div className="module-page">
       <div className="welcome-section">
         <div>
-          <h2>Transaction History</h2>
-          <p>Unified chronological audit trail of all financial inflows and outflows ({total} Total Records).</p>
+          <h2>Transactions</h2>
+          <p>Your complete history of money in and money out ({total} total transactions).</p>
         </div>
       </div>
 
@@ -50,7 +50,7 @@ export default function TransactionsPage() {
           <Search size={16} />
           <input
             type="text"
-            placeholder="Search all descriptions..."
+            placeholder="Search by note, shop, or category..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -61,9 +61,9 @@ export default function TransactionsPage() {
 
         <div className="filter-tabs" style={{ display: "flex", gap: "8px" }}>
           {[
-            { label: "All Transactions", value: "all" },
-            { label: "Incomes Only", value: "income" },
-            { label: "Expenses Only", value: "expense" },
+            { label: "All Activity", value: "all" },
+            { label: "Income (+)", value: "income" },
+            { label: "Expenses (-)", value: "expense" },
           ].map((tab) => (
             <button
               key={tab.value}

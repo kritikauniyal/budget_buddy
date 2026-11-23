@@ -15,7 +15,8 @@ import {
   LogIn,
   X,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Repeat
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -55,6 +56,7 @@ export default function Sidebar({
     { id: "Transactions", title: "Transactions", icon: History },
     { id: "Categories", title: "Categories", icon: Tags },
     { id: "Budgets", title: "Budgets", icon: BudgetIcon },
+    { id: "Recurring", title: "Recurring Bills", icon: Repeat },
     { id: "Reports", title: "Reports", icon: BarChart3 },
     { id: "Group Inbox", title: "Group Inbox", icon: Users },
     { id: "Notifications", title: "Notifications", icon: Bell },

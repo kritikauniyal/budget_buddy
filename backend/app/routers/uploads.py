@@ -86,3 +86,4 @@ def get_receipt(filename: str):
         media_type = "application/pdf"
 
     return FileResponse(file_path, media_type=media_type)
+

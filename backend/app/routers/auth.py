@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.database import get_db
 from app.models.models import (
     User,
@@ -39,9 +40,11 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             detail="An account with this email address already exists"
         )
 
-    # Hash password and create user
+    # Hash password and create user with strictly sequential ID
     hashed = hash_password(user_in.password)
+    next_id = (db.query(func.max(User.id)).scalar() or 0) + 1
     user = User(
+        id=next_id,
         full_name=user_in.full_name.strip(),
         email=user_in.email.lower().strip(),
         phone=user_in.phone.strip() if user_in.phone else None,

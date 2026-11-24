@@ -75,12 +75,12 @@ def get_group_inbox(
     for item in items:
         cat = cat_map.get(item.category_id)
         submitter = user_map.get(item.user_id)
-        grp = group_map.get(item.group_id) if item.group_id else first_group
+        grp = group_map.get(item.group_id) if item.group_id else None
 
         results.append(
             GroupInboxItemOut(
                 id=item.id,
-                group_id=item.group_id or (first_group.id if first_group else None),
+                group_id=item.group_id,
                 group_name=grp.name if grp else "General Group",
                 group_type=grp.group_type if grp else "Group",
                 title=item.title,

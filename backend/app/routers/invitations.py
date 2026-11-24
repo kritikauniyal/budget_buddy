@@ -5,6 +5,7 @@ from typing import List, Optional
 from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 
 from app.config import settings
@@ -618,8 +619,10 @@ def guest_join_group(
     phone = body.phone.strip() if body.phone else None
     guest_pwd_hash = hash_password(secrets.token_urlsafe(32))
 
-    # Create real guest user in users table
+    # Create real guest user in users table with strictly sequential ID
+    next_id = (db.query(func.max(User.id)).scalar() or 0) + 1
     guest_user = User(
+        id=next_id,
         full_name=guest_name,
         email=guest_email,
         phone=phone,

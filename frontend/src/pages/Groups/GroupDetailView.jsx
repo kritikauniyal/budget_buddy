@@ -37,17 +37,23 @@ import InviteMembersModal from "./InviteMembersModal";
 import RecordSettlementModal from "./RecordSettlementModal";
 
 const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "expenses", label: "Expenses" },
+  { id: "expenses", label: "Expenses Inbox" },
   { id: "balances", label: "Balances" },
+  { id: "overview", label: "Overview" },
   { id: "members", label: "Members" },
   { id: "activity", label: "Activity" },
   { id: "reports", label: "Reports" },
   { id: "settings", label: "Settings" },
 ];
 
-export default function GroupDetailView({ groupId, currentUser, onBack, externalAddTrigger }) {
-  const [activeTab, setActiveTab] = useState("overview");
+export default function GroupDetailView({
+  groupId,
+  currentUser,
+  onBack,
+  externalAddTrigger,
+  initialTab = "expenses"
+}) {
+  const [activeTab, setActiveTab] = useState(initialTab || "expenses");
   const [group, setGroup] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [expenses, setExpenses] = useState([]);
@@ -78,6 +84,12 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
       setShowAddExpense(true);
     }
   }, [externalAddTrigger]);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const loadAllGroupData = async () => {
     setRefreshing(true);
@@ -1005,6 +1017,8 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
               </button>
             </div>
           )}
+
+          {isAdmin && invitations.length > 0 && (
             <div style={{ marginTop: "28px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                 <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#334155" }}>

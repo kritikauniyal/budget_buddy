@@ -21,7 +21,8 @@ export default function GroupsPage({
   currentUser,
   selectedGroupId: propGroupId = null,
   onSelectGroup,
-  externalAddTrigger = null
+  externalAddTrigger = null,
+  initialTab = "expenses"
 }) {
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(propGroupId);
@@ -103,6 +104,7 @@ export default function GroupsPage({
         groupId={selectedGroupId}
         currentUser={currentUser}
         externalAddTrigger={externalAddTrigger}
+        initialTab={initialTab || "expenses"}
         onBack={() => {
           handleSelectGroup(null);
           loadGroupsData();

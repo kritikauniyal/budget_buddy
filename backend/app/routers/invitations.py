@@ -1,4 +1,5 @@
 import uuid
+import secrets
 import datetime
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -23,7 +24,7 @@ from app.schemas.schemas import (
     GuestJoinRequest
 )
 from app.dependencies.auth import get_current_user, get_optional_current_user
-from app.utils.security import create_access_token
+from app.utils.security import create_access_token, hash_password
 
 router = APIRouter(prefix="/api/invitations", tags=["Invitations & Contacts System"])
 
@@ -611,17 +612,18 @@ def guest_join_group(
     if not guest_name:
         raise HTTPException(status_code=400, detail="Please enter your name to join the group")
 
-    # Generate a unique guest email
+    # Generate a unique guest email and unguessable password hash
     unique_tag = uuid.uuid4().hex[:10]
     guest_email = f"guest_{unique_tag}@guest.budgetbuddy.local"
     phone = body.phone.strip() if body.phone else None
+    guest_pwd_hash = hash_password(secrets.token_urlsafe(32))
 
     # Create real guest user in users table
     guest_user = User(
         full_name=guest_name,
         email=guest_email,
         phone=phone,
-        hashed_password=None,
+        hashed_password=guest_pwd_hash,
         is_active=True,
         is_guest=True
     )

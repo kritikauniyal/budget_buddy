@@ -34,6 +34,7 @@ function MainApp() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [groupInitialTab, setGroupInitialTab] = useState("expenses");
   const [groupExpenseTrigger, setGroupExpenseTrigger] = useState(0);
 
   const [dashboardSummary, setDashboardSummary] = useState({});
@@ -55,19 +56,6 @@ function MainApp() {
       api.inspectInvitation(token)
         .then((data) => {
           setPendingInvite(data);
-          const autoJoin = localStorage.getItem("budget_buddy_auto_join");
-          if (isAuthenticated && autoJoin === token) {
-            localStorage.removeItem("budget_buddy_auto_join");
-            localStorage.removeItem("budget_buddy_pending_invite");
-            api.acceptInvitation(token)
-              .then((res) => {
-                setSelectedGroupId(res.group_id);
-                setActivePage("Groups");
-                setPendingInvite(null);
-                window.history.replaceState({}, document.title, "/");
-              })
-              .catch((e) => console.warn("Auto-join error:", e));
-          }
         })
         .catch((err) => {
           console.warn("Could not inspect invitation:", err);
@@ -158,34 +146,32 @@ function MainApp() {
     );
   }
 
-  // If not logged in, show AuthPage with InvitePreviewSheet on top if pending invite exists
-  if (!isAuthenticated) {
-    return (
-      <>
-        <AuthPage />
-        {pendingInvite && (
-          <InvitePreviewSheet
-            invite={pendingInvite}
-            onJoinSuccess={(res) => {
-              setPendingInvite(null);
-              setSelectedGroupId(res.group_id);
-              setActivePage("Groups");
-              loadData();
-            }}
-            onOpenGroup={(groupId) => {
-              setPendingInvite(null);
-              setSelectedGroupId(groupId);
-              setActivePage("Groups");
-            }}
-            onClose={() => {
-              setPendingInvite(null);
-              localStorage.removeItem("budget_buddy_pending_invite");
-              window.history.replaceState({}, document.title, window.location.pathname.replace(/\/invite\/[a-zA-Z0-9_-]+/, "/"));
-            }}
-          />
-        )}
-      </>
-    );
+  const handleInviteJoinSuccess = (res) => {
+    setPendingInvite(null);
+    setSelectedGroupId(res.group_id);
+    setGroupInitialTab("expenses");
+    setActivePage("Groups");
+    window.history.replaceState({}, document.title, "/");
+    loadData();
+  };
+
+  const handleInviteOpenGroup = (groupId) => {
+    setPendingInvite(null);
+    setSelectedGroupId(groupId);
+    setGroupInitialTab("expenses");
+    setActivePage("Groups");
+    window.history.replaceState({}, document.title, "/");
+  };
+
+  const handleInviteClose = () => {
+    setPendingInvite(null);
+    localStorage.removeItem("budget_buddy_pending_invite");
+    window.history.replaceState({}, document.title, window.location.pathname.replace(/\/invite\/[a-zA-Z0-9_-]+/, "/"));
+  };
+
+  // If not logged in and no pending invite to preview, show AuthPage
+  if (!isAuthenticated && !pendingInvite) {
+    return <AuthPage />;
   }
 
   const renderActiveModule = () => {
@@ -216,6 +202,7 @@ function MainApp() {
             currentUser={user}
             selectedGroupId={selectedGroupId}
             onSelectGroup={setSelectedGroupId}
+            initialTab={groupInitialTab}
             externalAddTrigger={groupExpenseTrigger}
           />
         );
@@ -284,22 +271,9 @@ function MainApp() {
       {pendingInvite && (
         <InvitePreviewSheet
           invite={pendingInvite}
-          onJoinSuccess={(res) => {
-            setPendingInvite(null);
-            setSelectedGroupId(res.group_id);
-            setActivePage("Groups");
-            loadData();
-          }}
-          onOpenGroup={(groupId) => {
-            setPendingInvite(null);
-            setSelectedGroupId(groupId);
-            setActivePage("Groups");
-          }}
-          onClose={() => {
-            setPendingInvite(null);
-            localStorage.removeItem("budget_buddy_pending_invite");
-            window.history.replaceState({}, document.title, window.location.pathname.replace(/\/invite\/[a-zA-Z0-9_-]+/, "/"));
-          }}
+          onJoinSuccess={handleInviteJoinSuccess}
+          onOpenGroup={handleInviteOpenGroup}
+          onClose={handleInviteClose}
         />
       )}
 

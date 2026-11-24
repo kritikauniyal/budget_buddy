@@ -20,7 +20,7 @@ class User(Base):
     full_name = Column(String(150), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     phone = Column(String(50), unique=False, index=True, nullable=True)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)
     profile_image = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     is_guest = Column(Boolean, default=False)

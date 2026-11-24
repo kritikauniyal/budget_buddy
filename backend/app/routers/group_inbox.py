@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import GroupInbox, Expense, ExpenseCategory, User, Group, GroupMember
-from app.dependencies.auth import get_optional_current_user
+from app.dependencies.auth import get_current_user
 from app.routers.dashboard import ensure_initial_seed
 from pydantic import BaseModel
 
@@ -44,30 +44,26 @@ class GroupInboxItemOut(BaseModel):
 def get_group_inbox(
     status_filter: Optional[str] = None,
     group_id: Optional[int] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    # Only return inbox items for groups where user is an active member
+    user_group_ids = [
+        gm.group_id for gm in db.query(GroupMember.group_id).filter(
+            GroupMember.user_id == current_user.id,
+            GroupMember.status == "active"
+        ).all()
+    ]
 
-    # Fetch user's first active group to link unassigned seed items
-    first_group = db.query(Group).first()
+    if not user_group_ids:
+        return []
 
-    # Seed baseline group inbox records if empty
-    if db.query(GroupInbox).first() is None:
-        food_cat = db.query(ExpenseCategory).filter(ExpenseCategory.name == "Food").first()
-        travel_cat = db.query(ExpenseCategory).filter(ExpenseCategory.name == "Travel").first()
-        other_cat = db.query(ExpenseCategory).filter(ExpenseCategory.name == "Other").first()
-        grp_id = first_group.id if first_group else None
-
-        db.add(GroupInbox(user_id=user.id, group_id=grp_id, category_id=food_cat.id if food_cat else None, title="Team Lunch at Cafe", amount=Decimal("2450.00"), payment_method="UPI", status="pending", description="Offsite project celebration"))
-        db.add(GroupInbox(user_id=user.id, group_id=grp_id, category_id=travel_cat.id if travel_cat else None, title="Client Site Taxi", amount=Decimal("620.00"), payment_method="Cash", status="pending", description="Taxi receipt attached"))
-        db.add(GroupInbox(user_id=user.id, group_id=grp_id, category_id=other_cat.id if other_cat else None, title="Office Supplies", amount=Decimal("890.00"), payment_method="Credit Card", status="pending", description="Printer paper and pens"))
-        db.commit()
-
-    query = db.query(GroupInbox).order_by(GroupInbox.created_at.desc())
+    query = db.query(GroupInbox).filter(GroupInbox.group_id.in_(user_group_ids)).order_by(GroupInbox.created_at.desc())
     if status_filter:
         query = query.filter(GroupInbox.status == status_filter)
     if group_id:
+        if group_id not in user_group_ids:
+            return []
         query = query.filter(GroupInbox.group_id == group_id)
 
     items = query.all()
@@ -106,10 +102,24 @@ def get_group_inbox(
 @router.post("", response_model=GroupInboxItemOut)
 def submit_to_inbox(
     item: SubmitGroupExpense,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    if not item.group_id:
+        raise HTTPException(status_code=400, detail="Group ID is required to submit a group expense.")
+
+    # Verify user is an active member of this group
+    mem = db.query(GroupMember).filter(
+        GroupMember.group_id == item.group_id,
+        GroupMember.user_id == current_user.id,
+        GroupMember.status == "active"
+    ).first()
+    if not mem:
+        raise HTTPException(status_code=403, detail="You are not an active member of this group.")
+
+    grp = db.query(Group).filter(Group.id == item.group_id).first()
+    if not grp:
+        raise HTTPException(status_code=404, detail="Group not found.")
 
     cat = None
     if item.category_id:
@@ -117,16 +127,9 @@ def submit_to_inbox(
     if not cat and item.category_name:
         cat = db.query(ExpenseCategory).filter(ExpenseCategory.name.ilike(item.category_name)).first()
 
-    grp = None
-    if item.group_id:
-        grp = db.query(Group).filter(Group.id == item.group_id).first()
-    if not grp:
-        # Default to first available group if any
-        grp = db.query(Group).first()
-
     new_inbox = GroupInbox(
-        user_id=user.id,
-        group_id=grp.id if grp else None,
+        user_id=current_user.id,
+        group_id=grp.id,
         category_id=cat.id if cat else None,
         title=item.title,
         amount=item.amount,
@@ -141,8 +144,8 @@ def submit_to_inbox(
     return GroupInboxItemOut(
         id=new_inbox.id,
         group_id=new_inbox.group_id,
-        group_name=grp.name if grp else "General Group",
-        group_type=grp.group_type if grp else "Group",
+        group_name=grp.name,
+        group_type=grp.group_type,
         title=new_inbox.title,
         amount=float(new_inbox.amount),
         category_id=new_inbox.category_id,
@@ -152,7 +155,7 @@ def submit_to_inbox(
         description=new_inbox.description,
         status=new_inbox.status,
         rejection_reason=None,
-        submitted_by=user.full_name,
+        submitted_by=current_user.full_name,
         created_at=new_inbox.created_at.strftime("%b %d, %Y - %I:%M %p")
     )
 
@@ -160,14 +163,21 @@ def submit_to_inbox(
 @router.post("/{inbox_id}/approve")
 def approve_inbox_expense(
     inbox_id: int,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
     inbox_item = db.query(GroupInbox).filter(GroupInbox.id == inbox_id).first()
-
     if not inbox_item:
         raise HTTPException(status_code=404, detail="Inbox item not found")
+
+    # Verify user is an active member (admin or member) of the item's group
+    mem = db.query(GroupMember).filter(
+        GroupMember.group_id == inbox_item.group_id,
+        GroupMember.user_id == current_user.id,
+        GroupMember.status == "active"
+    ).first()
+    if not mem:
+        raise HTTPException(status_code=403, detail="Not authorized to approve expenses for this group.")
 
     if inbox_item.status == "approved":
         raise HTTPException(status_code=400, detail="This expense has already been approved.")
@@ -196,7 +206,7 @@ def approve_inbox_expense(
 def reject_inbox_expense(
     inbox_id: int,
     body: RejectInput,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     inbox_item = db.query(GroupInbox).filter(GroupInbox.id == inbox_id).first()

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Income, Expense, IncomeCategory, ExpenseCategory, User
-from app.dependencies.auth import get_optional_current_user
+from app.dependencies.auth import get_current_user
 from app.routers.dashboard import ensure_initial_seed
 from pydantic import BaseModel
 
@@ -33,10 +33,10 @@ def get_all_transactions(
     search: Optional[str] = None,
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     if not user:
         return PaginatedTransactions(items=[], total=0, page=page, limit=limit)
 

@@ -23,6 +23,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     profile_image = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
+    is_guest = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 

@@ -18,9 +18,12 @@ from app.models.models import (
 from app.schemas.schemas import (
     ContactInviteInput,
     GroupInviteBatchRequest,
-    GroupInvitationOut
+    GroupInvitationOut,
+    EligibleFriendOut,
+    GuestJoinRequest
 )
 from app.dependencies.auth import get_current_user, get_optional_current_user
+from app.utils.security import create_access_token
 
 router = APIRouter(prefix="/api/invitations", tags=["Invitations & Contacts System"])
 
@@ -165,6 +168,88 @@ def invite_members(
         )
 
     return created_invites
+
+
+@router.get("/group/{group_id}/eligible-friends", response_model=List[EligibleFriendOut])
+def get_eligible_friends_to_invite(
+    group_id: int,
+    search: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns actual registered users who can be invited to the group.
+    Strictly excludes:
+      - Current logged-in user
+      - Existing active members of the group
+      - Users with existing pending invitations to this group
+      - Guest accounts
+    Supports search by name, email, or phone.
+    """
+    mem = db.query(GroupMember).filter(
+        GroupMember.group_id == group_id,
+        GroupMember.user_id == current_user.id,
+        GroupMember.status == "active"
+    ).first()
+    if not mem:
+        raise HTTPException(status_code=403, detail="You must be an active member to invite people to this group")
+
+    # Get active member user IDs in this group
+    active_member_ids = {
+        m[0] for m in db.query(GroupMember.user_id).filter(
+            GroupMember.group_id == group_id,
+            GroupMember.status == "active"
+        ).all()
+    }
+
+    # Get emails and phones with pending invitations
+    pending_invs = db.query(GroupInvitation).filter(
+        GroupInvitation.group_id == group_id,
+        GroupInvitation.status == "pending"
+    ).all()
+    pending_emails = {inv.invitee_email.lower().strip() for inv in pending_invs if inv.invitee_email}
+    pending_phones = {inv.invitee_phone.strip() for inv in pending_invs if inv.invitee_phone}
+
+    query = db.query(User).filter(
+        User.id != current_user.id,
+        User.is_active == True,
+        User.is_guest == False
+    )
+
+    if active_member_ids:
+        query = query.filter(User.id.notin_(active_member_ids))
+
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        query = query.filter(
+            (User.full_name.ilike(term)) |
+            (User.email.ilike(term)) |
+            (User.phone.ilike(term))
+        )
+
+    users = query.order_by(User.full_name.asc()).limit(50).all()
+
+    results = []
+    for u in users:
+        # Exclude if matching pending invite email or phone
+        if u.email and u.email.lower().strip() in pending_emails:
+            continue
+        if u.phone and u.phone.strip() in pending_phones:
+            continue
+
+        parts = (u.full_name or "User").strip().split()
+        initials = "".join([p[0].upper() for p in parts[:2]]) if parts else "U"
+
+        results.append(EligibleFriendOut(
+            id=u.id,
+            full_name=u.full_name,
+            email=u.email,
+            phone=u.phone,
+            avatar_url=u.avatar_url if hasattr(u, "avatar_url") else None,
+            initials=initials
+        ))
+
+    return results
 
 
 @router.get("/group/{group_id}", response_model=List[GroupInvitationOut])
@@ -491,6 +576,105 @@ def accept_invitation(
         "message": f"Successfully joined {group.name}!",
         "group_id": group.id,
         "group_name": group.name
+    }
+
+
+@router.post("/{token}/guest-join")
+def guest_join_group(
+    token: str,
+    body: GuestJoinRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Enables invited friends to join directly as a verified guest without prior registration.
+    Creates genuine database records (User with is_guest=True and GroupMember with role='guest').
+    Returns an authenticated session JWT and group routing info.
+    """
+    inv = db.query(GroupInvitation).filter(
+        GroupInvitation.token == token.strip()
+    ).first()
+
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation not found or invalid link")
+
+    group = db.query(Group).filter(Group.id == inv.group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="The group associated with this invitation no longer exists")
+
+    if inv.expires_at and inv.expires_at < datetime.datetime.utcnow():
+        raise HTTPException(status_code=400, detail="This invitation link has expired. Please request a new link from the group admin.")
+
+    if inv.status == "cancelled":
+        raise HTTPException(status_code=400, detail="This invitation has been cancelled by the group admin.")
+
+    guest_name = body.guest_name.strip() if body.guest_name else ""
+    if not guest_name:
+        raise HTTPException(status_code=400, detail="Please enter your name to join the group")
+
+    # Generate a unique guest email
+    unique_tag = uuid.uuid4().hex[:10]
+    guest_email = f"guest_{unique_tag}@guest.budgetbuddy.local"
+    phone = body.phone.strip() if body.phone else None
+
+    # Create real guest user in users table
+    guest_user = User(
+        full_name=guest_name,
+        email=guest_email,
+        phone=phone,
+        hashed_password=None,
+        is_active=True,
+        is_guest=True
+    )
+    db.add(guest_user)
+    db.commit()
+    db.refresh(guest_user)
+
+    now = datetime.datetime.utcnow()
+    # Add to group members
+    membership = GroupMember(
+        group_id=group.id,
+        user_id=guest_user.id,
+        role="guest",
+        status="active",
+        joined_at=now
+    )
+    db.add(membership)
+
+    is_universal_share = (inv.invitee_email is None and inv.invitee_phone is None)
+    if not is_universal_share:
+        inv.status = "accepted"
+        inv.accepted_at = now
+
+    # Notify inviter
+    if inv.invited_by:
+        db.add(Notification(
+            user_id=inv.invited_by,
+            title=f"New Guest Joined {group.name}",
+            message=f"{guest_name} accepted your invitation and joined '{group.name}'!",
+            type="group_invite",
+            action_url=f"/groups/{group.id}"
+        ))
+
+    db.commit()
+
+    # Generate persistent JWT access token for this guest
+    access_token = create_access_token(data={"sub": str(guest_user.id), "email": guest_user.email, "is_guest": True})
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": guest_user.id,
+            "full_name": guest_user.full_name,
+            "email": guest_user.email,
+            "phone": guest_user.phone,
+            "is_guest": True,
+            "is_active": True,
+            "created_at": guest_user.created_at.isoformat() if hasattr(guest_user, "created_at") and guest_user.created_at else ""
+        },
+        "group_id": group.id,
+        "group_name": group.name,
+        "message": f"Welcome to {group.name}, {guest_name}!"
     }
 
 

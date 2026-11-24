@@ -60,6 +60,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const setAuthSession = (newToken, newUser) => {
+    localStorage.setItem("budget_buddy_token", newToken);
+    setToken(newToken);
+    setUser(newUser);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -70,7 +76,8 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
-        setUser
+        setUser,
+        setAuthSession
       }}
     >
       {children}

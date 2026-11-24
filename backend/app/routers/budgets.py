@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import MonthlyBudget, CategoryBudget, ExpenseCategory, Expense, User
-from app.dependencies.auth import get_optional_current_user
+from app.dependencies.auth import get_current_user
 from app.routers.dashboard import ensure_initial_seed
 from pydantic import BaseModel
 
@@ -46,10 +46,10 @@ class BudgetSummaryOut(BaseModel):
 def get_current_budget(
     month: Optional[int] = None,
     year: Optional[int] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     now = datetime.date.today()
     target_month = month or now.month
     target_year = year or now.year
@@ -132,10 +132,10 @@ def get_current_budget(
 @router.post("", response_model=BudgetSummaryOut)
 def save_budget(
     item: SetBudgetInput,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     now = datetime.date.today()
     target_month = item.month or now.month
     target_year = item.year or now.year

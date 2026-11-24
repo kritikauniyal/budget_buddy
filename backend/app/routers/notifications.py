@@ -4,8 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Notification, User, MonthlyBudget, Expense
-from app.dependencies.auth import get_optional_current_user
-from app.routers.dashboard import ensure_initial_seed
+from app.dependencies.auth import get_current_user
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
@@ -20,10 +19,10 @@ class NotificationOut(BaseModel):
 
 @router.get("", response_model=List[NotificationOut])
 def get_notifications(
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
 
     # Check budget dynamically to trigger fresh alerts if needed
     today = datetime.date.today()
@@ -83,10 +82,10 @@ def get_notifications(
 @router.put("/{notification_id}/read")
 def mark_read(
     notification_id: int,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     note = db.query(Notification).filter(Notification.id == notification_id, Notification.user_id == user.id).first()
     if not note:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -97,10 +96,10 @@ def mark_read(
 
 @router.put("/read-all")
 def mark_all_read(
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     db.query(Notification).filter(Notification.user_id == user.id, Notification.is_read == False).update({"is_read": True})
     db.commit()
     return {"message": "All notifications marked as read"}

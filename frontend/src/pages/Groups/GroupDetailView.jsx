@@ -483,8 +483,37 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
                 ))}
               </div>
             ) : (
-              <div style={{ textAlign: "center", padding: "30px", color: "#94a3b8" }}>
-                No expenses added to this group yet. Click "+ Add Expense" above!
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "36px 20px",
+                  background: "#f8fafc",
+                  borderRadius: "14px",
+                  border: "1.5px dashed #cbd5e1"
+                }}
+              >
+                <Receipt size={36} style={{ margin: "0 auto 10px", color: "#6366f1", opacity: 0.8 }} />
+                <h4 style={{ margin: "0 0 6px", fontSize: "0.95rem", color: "#1e293b", fontWeight: 700 }}>
+                  No expenses yet. Add your first group expense.
+                </h4>
+                <p style={{ margin: "0 0 16px", fontSize: "0.82rem", color: "#64748b" }}>
+                  Record shared rent, groceries, dinner, or travel expenses easily.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAddExpense(true)}
+                  className="primary-button"
+                  style={{
+                    padding: "8px 18px",
+                    fontSize: "0.84rem",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                >
+                  <Plus size={15} />
+                  <span>Add First Expense</span>
+                </button>
               </div>
             )}
           </div>
@@ -610,10 +639,38 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
               })}
             </div>
           ) : (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
-              <Receipt size={40} style={{ margin: "0 auto 10px", color: "#cbd5e1" }} />
-              <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#475569" }}>No expenses in this group yet</p>
-              <span style={{ fontSize: "0.82rem" }}>Add lunch, room rent, groceries or travel tickets!</span>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "48px 20px",
+                background: "#f8fafc",
+                borderRadius: "14px",
+                border: "1.5px dashed #cbd5e1",
+                margin: "10px 0"
+              }}
+            >
+              <Receipt size={42} style={{ margin: "0 auto 12px", color: "#6366f1", opacity: 0.8 }} />
+              <h4 style={{ margin: "0 0 6px", fontSize: "1rem", color: "#1e293b", fontWeight: 700 }}>
+                No expenses yet. Add your first group expense.
+              </h4>
+              <p style={{ margin: "0 0 18px", fontSize: "0.85rem", color: "#64748b" }}>
+                Split dinner, hostel groceries, cab rides, or rent effortlessly with your group.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAddExpense(true)}
+                className="primary-button"
+                style={{
+                  padding: "10px 22px",
+                  fontSize: "0.88rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}
+              >
+                <Plus size={16} />
+                <span>Add Group Expense</span>
+              </button>
             </div>
           )}
         </div>
@@ -913,7 +970,41 @@ export default function GroupDetailView({ groupId, currentUser, onBack, external
             ))}
           </div>
 
-          {isAdmin && invitations.length > 0 && (
+          {members.length <= 1 && (
+            <div
+              style={{
+                marginTop: "20px",
+                padding: "36px 20px",
+                textAlign: "center",
+                background: "#f8fafc",
+                borderRadius: "14px",
+                border: "1.5px dashed #cbd5e1"
+              }}
+            >
+              <Users size={38} style={{ color: "#6366f1", margin: "0 auto 10px", opacity: 0.8 }} />
+              <h4 style={{ margin: "0 0 6px", fontSize: "0.98rem", color: "#1e293b", fontWeight: 700 }}>
+                No other members in this group yet
+              </h4>
+              <p style={{ margin: "0 0 16px", fontSize: "0.84rem", color: "#64748b" }}>
+                Invite your flatmates, friends, or travel buddies to start sharing expenses and settling balances together.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(true)}
+                className="primary-button"
+                style={{
+                  padding: "9px 20px",
+                  fontSize: "0.85rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <UserPlus size={16} />
+                <span>Invite Friends to Group</span>
+              </button>
+            </div>
+          )}
             <div style={{ marginTop: "28px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                 <h4 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#334155" }}>

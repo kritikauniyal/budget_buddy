@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Expense, ExpenseCategory, User
-from app.dependencies.auth import get_optional_current_user
+from app.dependencies.auth import get_current_user
 from app.routers.dashboard import ensure_initial_seed
 from pydantic import BaseModel
 
@@ -37,10 +37,10 @@ def get_expenses(
     category: Optional[str] = None,
     payment_method: Optional[str] = None,
     search: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     query = db.query(Expense).filter(Expense.user_id == user.id)
 
     if search:
@@ -79,10 +79,10 @@ def get_expenses(
 @router.post("", response_model=ExpenseDetailOut)
 def create_expense_item(
     item: ExpenseInput,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
 
     category = None
     if item.category_id:
@@ -132,10 +132,10 @@ def create_expense_item(
 @router.delete("/{expense_id}")
 def delete_expense(
     expense_id: int,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     exp = db.query(Expense).filter(Expense.id == expense_id, Expense.user_id == user.id).first()
     if not exp:
         raise HTTPException(status_code=404, detail="Expense record not found")
@@ -150,10 +150,10 @@ def delete_expense(
 def update_expense(
     expense_id: int,
     item: ExpenseInput,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     exp = db.query(Expense).filter(Expense.id == expense_id, Expense.user_id == user.id).first()
     if not exp:
         raise HTTPException(status_code=404, detail="Expense record not found")

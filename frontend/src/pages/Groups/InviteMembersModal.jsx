@@ -1,37 +1,89 @@
-import React, { useState, useEffect } from "react";
-import { X, UserPlus, Smartphone, Share2, Copy, Check, MessageSquare, Mail, Trash2, Send } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  X,
+  UserPlus,
+  Smartphone,
+  Copy,
+  Check,
+  MessageSquare,
+  Mail,
+  Trash2,
+  Search,
+  UserCheck,
+  Send,
+  Users,
+  Clock,
+  ExternalLink
+} from "lucide-react";
 import api from "../../services/api";
 
 export default function InviteMembersModal({ group, currentUser, onClose, onMembersInvited }) {
-  const [contacts, setContacts] = useState([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [activeTab, setActiveTab] = useState("registered"); // 'registered' | 'link' | 'manual' | 'pending'
+  
+  // Real registered eligible friends from DB
+  const [eligibleFriends, setEligibleFriends] = useState([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [invitingFriendId, setInvitingFriendId] = useState(null);
 
+  // Manual contact inputs
+  const [manualName, setManualName] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualContacts, setManualContacts] = useState([]);
+
+  // Database invitations & link
   const [existingInvites, setExistingInvites] = useState([]);
   const [universalInvite, setUniversalInvite] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [copiedToken, setCopiedToken] = useState(null);
   const [notice, setNotice] = useState("");
+  const [copiedToken, setCopiedToken] = useState(null);
 
-  const loadExistingInvites = async () => {
+  // Fetch real registered eligible friends from database
+  const loadEligibleFriends = useCallback(async (query = "") => {
+    if (!group?.id) return;
+    setLoadingFriends(true);
+    try {
+      const data = await api.getEligibleFriendsToInvite(group.id, query);
+      setEligibleFriends(data || []);
+    } catch (err) {
+      console.warn("Could not load eligible friends:", err);
+      setEligibleFriends([]);
+    } finally {
+      setLoadingFriends(false);
+    }
+  }, [group?.id]);
+
+  // Fetch group pending invitations from DB
+  const loadExistingInvites = useCallback(async () => {
+    if (!group?.id) return;
     try {
       const data = await api.getGroupInvitations(group.id);
       setExistingInvites(data || []);
     } catch (err) {
       console.warn("Could not load invitations:", err);
     }
-  };
+  }, [group?.id]);
 
+  // Load initial data
   useEffect(() => {
-    if (group && group.id) {
+    if (group?.id) {
+      loadEligibleFriends("");
       loadExistingInvites();
       api.getGroupShareLink(group.id)
         .then((data) => setUniversalInvite(data))
         .catch((err) => console.warn("Could not load share link:", err));
     }
-  }, [group]);
+  }, [group?.id, loadEligibleFriends, loadExistingInvites]);
+
+  // Debounced search for eligible friends
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadEligibleFriends(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, loadEligibleFriends]);
 
   const formatShareUrl = (token) => {
     if (!token) return "";
@@ -48,101 +100,94 @@ export default function InviteMembersModal({ group, currentUser, onClose, onMemb
       : `https://wa.me/?text=${encodeURIComponent(msg)}`;
   };
 
-  // Contact Picker API
-  const handleImportContacts = async () => {
-    setNotice("");
-    if ("contacts" in navigator && "ContactsManager" in window) {
-      try {
-        const props = ["name", "email", "tel"];
-        const selected = await navigator.contacts.select(props, { multiple: true });
-        if (selected && selected.length > 0) {
-          const imported = selected.map((c) => ({
-            name: c.name && c.name[0] ? c.name[0] : "",
-            email: c.email && c.email[0] ? c.email[0] : "",
-            phone: c.tel && c.tel[0] ? c.tel[0] : "",
-          })).filter((c) => c.email || c.phone);
+  const handleCopyLink = (token) => {
+    const url = formatShareUrl(token);
+    navigator.clipboard.writeText(url);
+    setCopiedToken(token);
+    setNotice("Invitation link copied to clipboard!");
+    setTimeout(() => {
+      setCopiedToken(null);
+      setNotice("");
+    }, 2500);
+  };
 
-          setContacts((prev) => [...prev, ...imported]);
-          setNotice(`Imported ${imported.length} contacts! Click 'Send Invitations' below.`);
-        }
-      } catch (err) {
-        setNotice("Contact picker was cancelled.");
-      }
-    } else {
-      setNotice("Direct device contact picker is only available on supported mobile browsers. Use the manual fields below.");
+  // Direct 1-Click invite for a real registered user
+  const handleInviteRegisteredFriend = async (friend) => {
+    setInvitingFriendId(friend.id);
+    setError("");
+    setNotice("");
+    try {
+      await api.inviteGroupMembers(group.id, {
+        contacts: [
+          {
+            name: friend.full_name,
+            email: friend.email,
+            phone: friend.phone || null,
+          },
+        ],
+      });
+
+      // Remove invited friend from eligible list
+      setEligibleFriends((prev) => prev.filter((f) => f.id !== friend.id));
+      setNotice(`Invitation sent to ${friend.full_name}! They received an in-app notification.`);
+      await loadExistingInvites();
+      if (onMembersInvited) onMembersInvited();
+    } catch (err) {
+      setError(err.message || `Failed to invite ${friend.full_name}.`);
+    } finally {
+      setInvitingFriendId(null);
     }
   };
 
+  // Manual contact addition
   const handleAddManualContact = (e) => {
     e.preventDefault();
-    if (!email && !phone) {
+    if (!manualEmail && !manualPhone) {
       setError("Please provide an email or phone number.");
       return;
     }
     setError("");
-    setContacts((prev) => [
+    setManualContacts((prev) => [
       ...prev,
       {
-        name: name.trim() || email.split("@")[0] || phone,
-        email: email.trim(),
-        phone: phone.trim(),
+        name: manualName.trim() || manualEmail.split("@")[0] || manualPhone,
+        email: manualEmail.trim() || null,
+        phone: manualPhone.trim() || null,
       },
     ]);
-    setName("");
-    setEmail("");
-    setPhone("");
+    setManualName("");
+    setManualEmail("");
+    setManualPhone("");
   };
 
-  const handleSendBatchInvites = async () => {
-    if (contacts.length === 0) {
-      setError("Please add at least one friend to invite.");
-      return;
-    }
+  // Send batch invites for manual contacts
+  const handleSendManualBatch = async () => {
+    if (manualContacts.length === 0) return;
     setLoading(true);
     setError("");
     try {
-      await api.inviteGroupMembers(group.id, { contacts });
-      setContacts([]);
-      setNotice("Invitations recorded successfully! Share the links below.");
+      await api.inviteGroupMembers(group.id, { contacts: manualContacts });
+      setManualContacts([]);
+      setNotice("Invitations recorded successfully in the database!");
       await loadExistingInvites();
-      if (onMembersInvited) {
-        onMembersInvited();
-      }
+      if (onMembersInvited) onMembersInvited();
     } catch (err) {
-      setError(err.message || "Failed to send invitations.");
+      setError(err.message || "Failed to create invitations.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCopyLink = (token) => {
-    const url = formatShareUrl(token);
-    navigator.clipboard.writeText(url);
-    setCopiedToken(token);
-    setTimeout(() => setCopiedToken(null), 2500);
-  };
-
-  const handleNativeShare = (invite) => {
-    const url = formatShareUrl(invite.token);
-    const inviter = currentUser?.full_name || "A friend";
-    const text = `Hey! ${inviter} invited you to join the ${group.name} group on Budget Buddy to share expenses and split balances.\n\nJoin our group:\n${url}`;
-    if (navigator.share) {
-      navigator.share({
-        title: `Join ${group.name} on Budget Buddy`,
-        text,
-        url,
-      }).catch(() => {});
-    } else {
-      handleCopyLink(invite.token);
-    }
-  };
-
+  // Revoke an invitation
   const handleRevokeInvite = async (invitationId) => {
     try {
       await api.cancelInvitation(invitationId);
       setExistingInvites((prev) => prev.filter((i) => i.id !== invitationId));
+      setNotice("Invitation cancelled successfully.");
+      // Refresh eligible friends in case revoked user is registered
+      loadEligibleFriends(searchQuery);
     } catch (err) {
-      setError(err.message || "Could not revoke invitation.");
+      setError(err.message || "Could not cancel invitation.");
     }
   };
 
@@ -153,16 +198,30 @@ export default function InviteMembersModal({ group, currentUser, onClose, onMemb
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="modal-card" style={{ maxWidth: "620px" }}>
-        <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div className="modal-icon-badge" style={{ background: "rgba(117, 87, 232, 0.12)", color: "#7557E8" }}>
+      <div className="modal-card" style={{ maxWidth: "580px", borderRadius: "18px" }}>
+        {/* Header */}
+        <div className="modal-header" style={{ padding: "18px 20px 14px", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "42px",
+                height: "42px",
+                borderRadius: "12px",
+                background: "rgba(99, 102, 241, 0.12)",
+                color: "#6366f1",
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0
+              }}
+            >
               <UserPlus size={22} />
             </div>
             <div>
-              <h3>Invite Friends to {group.name}</h3>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-                Add members via contacts or shareable invitation links
+              <h3 style={{ margin: 0, fontSize: "1.12rem", fontWeight: 700, color: "#0f172a" }}>
+                Invite to "{group.name}"
+              </h3>
+              <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                Invite real registered users or share a secure WhatsApp link
               </p>
             </div>
           </div>
@@ -171,371 +230,475 @@ export default function InviteMembersModal({ group, currentUser, onClose, onMemb
           </button>
         </div>
 
+        {/* Alerts */}
         {error && (
-          <div className="auth-alert error" style={{ margin: "14px 20px 0" }}>
+          <div className="auth-alert error" style={{ margin: "12px 20px 0", fontSize: "0.84rem" }}>
             <span>{error}</span>
           </div>
         )}
 
         {notice && (
-          <div style={{ margin: "14px 20px 0", fontSize: "0.82rem", color: "#0f766e", background: "#f0fdf4", padding: "8px 12px", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-            {notice}
+          <div
+            style={{
+              margin: "12px 20px 0",
+              fontSize: "0.84rem",
+              color: "#0f766e",
+              background: "#f0fdf4",
+              padding: "10px 14px",
+              borderRadius: "10px",
+              border: "1px solid #bbf7d0",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}
+          >
+            <Check size={16} color="#16a34a" />
+            <span>{notice}</span>
           </div>
         )}
 
-        <div className="modal-body" style={{ maxHeight: "68vh", overflowY: "auto", padding: "18px 20px" }}>
-          {/* Universal WhatsApp & Direct Share Link Card */}
-          <div style={{
-            background: "linear-gradient(135deg, rgba(37, 211, 102, 0.08), rgba(117, 87, 232, 0.08))",
-            border: "1px solid rgba(37, 211, 102, 0.35)",
-            borderRadius: "12px",
-            padding: "14px 16px",
-            marginBottom: "18px"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-                <div style={{ width: "30px", height: "30px", borderRadius: "50%", background: "#25D366", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
-                  <MessageSquare size={16} />
-                </div>
-                <div>
-                  <strong style={{ fontSize: "0.92rem", color: "#0f172a", display: "block" }}>Quick Group Invite Link</strong>
-                  <span style={{ fontSize: "0.76rem", color: "#64748b" }}>Anyone with this link can tap to join {group.name}</span>
-                </div>
+        {/* Tab Navigation */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.3fr 1fr 1fr",
+            padding: "12px 20px 0",
+            gap: "6px"
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab("registered")}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: "none",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              background: activeTab === "registered" ? "#6366f1" : "#f1f5f9",
+              color: activeTab === "registered" ? "#ffffff" : "#64748b",
+              transition: "all 0.2s ease"
+            }}
+          >
+            Registered Users
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("link")}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: "none",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              background: activeTab === "link" ? "#25D366" : "#f1f5f9",
+              color: activeTab === "link" ? "#ffffff" : "#64748b",
+              transition: "all 0.2s ease"
+            }}
+          >
+            WhatsApp Link
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("pending")}
+            style={{
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: "none",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              background: activeTab === "pending" ? "#0f172a" : "#f1f5f9",
+              color: activeTab === "pending" ? "#ffffff" : "#64748b",
+              transition: "all 0.2s ease"
+            }}
+          >
+            Pending ({existingInvites.length})
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="modal-body" style={{ maxHeight: "60vh", overflowY: "auto", padding: "16px 20px" }}>
+          
+          {/* TAB 1: REAL REGISTERED USERS FROM DB */}
+          {activeTab === "registered" && (
+            <div>
+              {/* Search input */}
+              <div style={{ position: "relative", marginBottom: "14px" }}>
+                <Search
+                  size={16}
+                  color="#94a3b8"
+                  style={{ position: "absolute", left: "12px", top: "12px" }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search registered friends by name, email or phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px 10px 38px",
+                    borderRadius: "10px",
+                    border: "1.5px solid #e2e8f0",
+                    fontSize: "0.88rem",
+                    outline: "none"
+                  }}
+                />
               </div>
 
-            </div>
+              {/* Friends List or Empty State */}
+              {loadingFriends ? (
+                <div style={{ padding: "30px 0", textAlign: "center", color: "#64748b", fontSize: "0.88rem" }}>
+                  Searching registered friends in database...
+                </div>
+              ) : eligibleFriends.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {eligibleFriends.map((friend) => (
+                    <div
+                      key={friend.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        borderRadius: "12px",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        gap: "12px"
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            borderRadius: "50%",
+                            background: "linear-gradient(135deg, #6366f1, #818cf8)",
+                            color: "#fff",
+                            display: "grid",
+                            placeItems: "center",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                            flexShrink: 0
+                          }}
+                        >
+                          {friend.initials || "U"}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <strong
+                            style={{
+                              display: "block",
+                              fontSize: "0.88rem",
+                              color: "#0f172a",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap"
+                            }}
+                          >
+                            {friend.full_name}
+                          </strong>
+                          <span
+                            style={{
+                              fontSize: "0.76rem",
+                              color: "#64748b",
+                              display: "block",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap"
+                            }}
+                          >
+                            {friend.email} {friend.phone ? `• ${friend.phone}` : ""}
+                          </span>
+                        </div>
+                      </div>
 
-            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "10px", flexWrap: "wrap" }}>
-              <input
-                type="text"
-                readOnly
-                value={formatShareUrl(universalInvite?.token || "")}
-                style={{
-                  flex: "1 1 200px",
-                  fontSize: "0.82rem",
-                  padding: "8px 12px",
-                  background: "#ffffff",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
-                  color: "#334155"
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => handleCopyLink(universalInvite?.token)}
-                className="secondary-button"
-                style={{ padding: "8px 12px", minWidth: "auto", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "6px" }}
-              >
-                {copiedToken === universalInvite?.token ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
-                <span>{copiedToken === universalInvite?.token ? "Copied!" : "Copy Link"}</span>
-              </button>
-
-              <a
-                href={getWhatsAppShareUrl(universalInvite?.token || "")}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "#25D366",
-                  color: "#ffffff",
-                  padding: "8px 14px",
-                  borderRadius: "8px",
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  boxShadow: "0 2px 6px rgba(37, 211, 102, 0.25)"
-                }}
-              >
-                <MessageSquare size={16} />
-                <span>Send via WhatsApp</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Top Actions: Import Contacts */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-            <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Add by Phone or Email</span>
-            <button
-              type="button"
-              onClick={handleImportContacts}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                background: "rgba(34, 184, 160, 0.12)",
-                color: "#0f766e",
-                border: "none",
-                borderRadius: "6px",
-                padding: "6px 12px",
-                fontSize: "0.82rem",
-                cursor: "pointer",
-                fontWeight: 500
-              }}
-            >
-              <Smartphone size={15} />
-              <span>Import Device Contacts</span>
-            </button>
-          </div>
-
-          {/* Manual Contact Entry */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.5fr 1fr auto", gap: "6px", marginBottom: "12px" }}>
-            <input
-              type="text"
-              placeholder="Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={{ fontSize: "0.84rem", padding: "7px 10px" }}
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{ fontSize: "0.84rem", padding: "7px 10px" }}
-            />
-            <input
-              type="tel"
-              placeholder="Phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              style={{ fontSize: "0.84rem", padding: "7px 10px" }}
-            />
-            <button
-              type="button"
-              onClick={handleAddManualContact}
-              className="primary-button"
-              style={{ padding: "8px 14px", minWidth: "auto", fontSize: "0.82rem" }}
-            >
-              Add
-            </button>
-          </div>
-
-          {/* Staged contacts to invite */}
-          {contacts.length > 0 && (
-            <div style={{ background: "#f8fafc", padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "14px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>
-                  Selected Contacts ({contacts.length}):
-                </span>
-                <button
-                  type="button"
-                  onClick={handleSendBatchInvites}
-                  className="primary-button"
-                  disabled={loading}
-                  style={{ padding: "5px 12px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                      <button
+                        type="button"
+                        onClick={() => handleInviteRegisteredFriend(friend)}
+                        disabled={invitingFriendId === friend.id}
+                        className="primary-button"
+                        style={{
+                          padding: "6px 14px",
+                          fontSize: "0.8rem",
+                          minWidth: "auto",
+                          borderRadius: "8px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          flexShrink: 0
+                        }}
+                      >
+                        <UserPlus size={14} />
+                        <span>{invitingFriendId === friend.id ? "Inviting..." : "Invite"}</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* STRICT EMPTY STATE REQUIRED BY USER */
+                <div
+                  style={{
+                    padding: "32px 16px",
+                    textAlign: "center",
+                    background: "#f8fafc",
+                    borderRadius: "14px",
+                    border: "1.5px dashed #cbd5e1",
+                    margin: "10px 0"
+                  }}
                 >
-                  <Send size={13} />
-                  <span>{loading ? "Generating..." : "Generate Invitations"}</span>
-                </button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                {contacts.map((c, i) => (
                   <div
-                    key={i}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "6px 10px",
-                      background: "#fff",
-                      borderRadius: "6px",
-                      fontSize: "0.83rem",
-                      border: "1px solid #e2e8f0"
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      background: "#ede9fe",
+                      color: "#6366f1",
+                      display: "grid",
+                      placeItems: "center",
+                      margin: "0 auto 12px"
                     }}
                   >
-                    <span><strong>{c.name}</strong> <span style={{ color: "#64748b" }}>({c.email || c.phone})</span></span>
-                    <button
-                      type="button"
-                      onClick={() => setContacts((prev) => prev.filter((_, idx) => idx !== i))}
-                      style={{ border: "none", background: "transparent", color: "#ef4444", cursor: "pointer" }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <Users size={24} />
                   </div>
-                ))}
+                  <h4 style={{ margin: "0 0 6px", fontSize: "0.95rem", color: "#1e293b", fontWeight: 700 }}>
+                    No friends found. Share an invitation link to invite someone.
+                  </h4>
+                  <p style={{ margin: "0 0 16px", fontSize: "0.82rem", color: "#64748b", maxWidth: "340px", marginInline: "auto" }}>
+                    Anyone you invite through WhatsApp can join in one tap or participate directly as a guest.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("link")}
+                    className="primary-button"
+                    style={{
+                      padding: "8px 18px",
+                      fontSize: "0.84rem",
+                      background: "#25D366",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 2px 8px rgba(37, 211, 102, 0.25)"
+                    }}
+                  >
+                    <MessageSquare size={15} />
+                    <span>Open WhatsApp Share</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: WHATSAPP & UNIVERSAL SHARE LINK */}
+          {activeTab === "link" && (
+            <div>
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(37, 211, 102, 0.08), rgba(99, 102, 241, 0.08))",
+                  border: "1.5px solid rgba(37, 211, 102, 0.35)",
+                  borderRadius: "14px",
+                  padding: "16px",
+                  marginBottom: "16px"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                  <div
+                    style={{
+                      width: "34px",
+                      height: "34px",
+                      borderRadius: "50%",
+                      background: "#25D366",
+                      color: "#fff",
+                      display: "grid",
+                      placeItems: "center",
+                      flexShrink: 0
+                    }}
+                  >
+                    <MessageSquare size={18} />
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: "0.95rem", color: "#0f172a", display: "block" }}>
+                      Instant WhatsApp Invitation
+                    </strong>
+                    <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                      Receiver taps the link to view group details & join directly
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "12px", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={formatShareUrl(universalInvite?.token || "")}
+                    style={{
+                      flex: "1 1 200px",
+                      fontSize: "0.82rem",
+                      padding: "9px 12px",
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      color: "#334155"
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopyLink(universalInvite?.token)}
+                    className="secondary-button"
+                    style={{
+                      padding: "9px 14px",
+                      minWidth: "auto",
+                      fontSize: "0.82rem",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    {copiedToken === universalInvite?.token ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                    <span>{copiedToken === universalInvite?.token ? "Copied!" : "Copy"}</span>
+                  </button>
+
+                  <a
+                    href={getWhatsAppShareUrl(universalInvite?.token || "")}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "#25D366",
+                      color: "#ffffff",
+                      padding: "9px 16px",
+                      borderRadius: "8px",
+                      fontSize: "0.84rem",
+                      fontWeight: 700,
+                      textDecoration: "none",
+                      boxShadow: "0 2px 8px rgba(37, 211, 102, 0.25)"
+                    }}
+                  >
+                    <MessageSquare size={16} />
+                    <span>Send on WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Message Preview */}
+              <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>
+                  WhatsApp Message Preview
+                </span>
+                <p style={{ margin: 0, fontSize: "0.82rem", color: "#334155", fontStyle: "italic", lineHeight: 1.5 }}>
+                  "Hey! {currentUser?.full_name || "A friend"} invited you to join the {group.name} group on Budget Buddy to share expenses and split balances.
+                  <br />
+                  <br />
+                  Join our group:
+                  <br />
+                  {formatShareUrl(universalInvite?.token || "...")}"
+                </p>
               </div>
             </div>
           )}
 
-          {/* Existing Pending Invitations & Share Links */}
-          <div style={{ marginTop: "18px", borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
-            <span style={{ fontWeight: 600, fontSize: "0.9rem", display: "block", marginBottom: "10px" }}>
-              Pending Invitations & Share Links ({existingInvites.length})
-            </span>
-
-            {existingInvites.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {existingInvites.map((inv) => {
-                  const inviteUrl = formatShareUrl(inv.token);
-                  const waUrl = getWhatsAppShareUrl(inv.token, inv.invitee_phone);
-                  const mailSubject = `Join ${group.name} on Budget Buddy`;
-                  const mailBody = `Hey! Join my group '${group.name}' on Budget Buddy to share expenses and split bills:\n\n${inviteUrl}`;
-                  const mailUrl = `mailto:${inv.invitee_email || ""}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`;
-                  const smsUrl = `sms:${inv.invitee_phone || ""}?body=${encodeURIComponent(mailBody)}`;
-
-                  return (
-                    <div
-                      key={inv.id}
-                      style={{
-                        padding: "12px",
-                        borderRadius: "10px",
-                        background: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px"
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {/* TAB 3: PENDING INVITATIONS FROM DATABASE */}
+          {activeTab === "pending" && (
+            <div>
+              {existingInvites.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {existingInvites.map((inv) => {
+                    const waUrl = getWhatsAppShareUrl(inv.token, inv.invitee_phone);
+                    return (
+                      <div
+                        key={inv.id}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: "12px",
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "10px"
+                        }}
+                      >
                         <div>
-                          <strong>{inv.invitee_name || inv.invitee_email || inv.invitee_phone || "Invited Friend"}</strong>
-                          <span style={{
-                            marginLeft: "8px",
-                            padding: "2px 8px",
-                            borderRadius: "12px",
-                            fontSize: "0.74rem",
-                            background: inv.is_registered ? "rgba(34, 184, 160, 0.15)" : "rgba(244, 174, 80, 0.15)",
-                            color: inv.is_registered ? "#0f766e" : "#b45309",
-                            fontWeight: 600
-                          }}>
-                            {inv.is_registered ? "Registered User" : "Pending Join"}
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <strong style={{ fontSize: "0.88rem", color: "#0f172a" }}>
+                              {inv.invitee_name || inv.invitee_email || inv.invitee_phone || "Friend via Share Link"}
+                            </strong>
+                            <span
+                              style={{
+                                padding: "2px 8px",
+                                borderRadius: "10px",
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                background: inv.status === "accepted" ? "#dcfce7" : "#fef3c7",
+                                color: inv.status === "accepted" ? "#15803d" : "#b45309"
+                              }}
+                            >
+                              {inv.status}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: "0.76rem", color: "#64748b", display: "block", marginTop: "2px" }}>
+                            Created: {inv.created_at} • By {inv.invited_by_name}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRevokeInvite(inv.id)}
-                          style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer" }}
-                          title="Revoke invitation"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
 
-                      {/* Direct Share Channels */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
-                        {/* WhatsApp */}
-                        <a
-                          href={waUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            background: "#25D366",
-                            color: "#fff",
-                            padding: "5px 10px",
-                            borderRadius: "6px",
-                            fontSize: "0.78rem",
-                            fontWeight: 600,
-                            textDecoration: "none"
-                          }}
-                        >
-                          <MessageSquare size={13} />
-                          <span>WhatsApp</span>
-                        </a>
-
-                        {/* Email */}
-                        <a
-                          href={mailUrl}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            background: "#EA4335",
-                            color: "#fff",
-                            padding: "5px 10px",
-                            borderRadius: "6px",
-                            fontSize: "0.78rem",
-                            fontWeight: 600,
-                            textDecoration: "none"
-                          }}
-                        >
-                          <Mail size={13} />
-                          <span>Email</span>
-                        </a>
-
-                        {/* SMS */}
-                        <a
-                          href={smsUrl}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            background: "#0284c7",
-                            color: "#fff",
-                            padding: "5px 10px",
-                            borderRadius: "6px",
-                            fontSize: "0.78rem",
-                            fontWeight: 600,
-                            textDecoration: "none"
-                          }}
-                        >
-                          <span>SMS</span>
-                        </a>
-
-                        {/* Copy Link */}
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(inv.token)}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            background: copiedToken === inv.token ? "#10b981" : "#e2e8f0",
-                            color: copiedToken === inv.token ? "#fff" : "#334155",
-                            padding: "5px 10px",
-                            borderRadius: "6px",
-                            fontSize: "0.78rem",
-                            fontWeight: 600,
-                            border: "none",
-                            cursor: "pointer"
-                          }}
-                        >
-                          {copiedToken === inv.token ? <Check size={13} /> : <Copy size={13} />}
-                          <span>{copiedToken === inv.token ? "Copied!" : "Copy Link"}</span>
-                        </button>
-
-                        {/* Native Share */}
-                        {navigator.share && (
-                          <button
-                            type="button"
-                            onClick={() => handleNativeShare(inv)}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noreferrer"
                             style={{
+                              padding: "6px 10px",
+                              borderRadius: "6px",
+                              background: "#25D366",
+                              color: "#fff",
+                              fontSize: "0.76rem",
+                              fontWeight: 600,
+                              textDecoration: "none",
                               display: "inline-flex",
                               alignItems: "center",
-                              gap: "5px",
-                              background: "#7557E8",
-                              color: "#fff",
-                              padding: "5px 10px",
-                              borderRadius: "6px",
-                              fontSize: "0.78rem",
-                              fontWeight: 600,
-                              border: "none",
-                              cursor: "pointer"
+                              gap: "4px"
                             }}
                           >
-                            <Share2 size={13} />
+                            <MessageSquare size={13} />
                             <span>Share</span>
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeInvite(inv.id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#ef4444",
+                              cursor: "pointer",
+                              padding: "6px"
+                            }}
+                            title="Cancel Invitation"
+                          >
+                            <Trash2 size={15} />
                           </button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: "16px", color: "#94a3b8", fontSize: "0.85rem" }}>
-                No active invitations. Add friends above to generate personalized shareable invite links!
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ padding: "30px 0", textAlign: "center", color: "#64748b", fontSize: "0.88rem" }}>
+                  <Clock size={28} style={{ margin: "0 auto 8px", opacity: 0.5 }} />
+                  <div>No pending invitations for this group.</div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
 
-        <div className="modal-footer" style={{ padding: "14px 20px" }}>
-          <button type="button" className="primary-button" onClick={onClose}>
+        {/* Footer */}
+        <div className="modal-footer" style={{ padding: "14px 20px", borderTop: "1px solid #f1f5f9" }}>
+          <button type="button" className="secondary-button" onClick={onClose} style={{ width: "100%" }}>
             Done
           </button>
         </div>

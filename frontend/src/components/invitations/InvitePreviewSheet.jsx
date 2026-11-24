@@ -9,7 +9,7 @@ export default function InvitePreviewSheet({
   onOpenGroup,
   onClose,
 }) {
-  const { user, isAuthenticated, login, register } = useAuth();
+  const { user, isAuthenticated, login, register, setAuthSession } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -17,7 +17,9 @@ export default function InvitePreviewSheet({
 
   // Inline Auth State for Unauthenticated Users
   const [showAuthInline, setShowAuthInline] = useState(false);
-  const [authMode, setAuthMode] = useState("register"); // 'register' | 'login'
+  const [authMode, setAuthMode] = useState("guest"); // 'guest' | 'login' | 'register'
+  const [guestName, setGuestName] = useState(invite?.invitee_name || "");
+  const [guestPhone, setGuestPhone] = useState(invite?.invitee_phone || "");
   const [authName, setAuthName] = useState(invite?.invitee_name || "");
   const [authEmail, setAuthEmail] = useState(invite?.invitee_email || "");
   const [authPhone, setAuthPhone] = useState(invite?.invitee_phone || "");
@@ -53,6 +55,36 @@ export default function InvitePreviewSheet({
     } catch (err) {
       setError(err.message || "Failed to join group. Please try again.");
       setLoading(false);
+    }
+  };
+
+  // Handle Guest Join Submit
+  const handleGuestJoin = async (e) => {
+    e.preventDefault();
+    if (!guestName.trim()) {
+      setAuthError("Please enter your name to join.");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const data = await api.joinAsGuest(invite.token, {
+        guest_name: guestName.trim(),
+        phone: guestPhone.trim() || null,
+      });
+      setAuthSession(data.access_token, data.user);
+      localStorage.removeItem("budget_buddy_pending_invite");
+      window.history.replaceState({}, document.title, window.location.pathname.replace(/\/invite\/[a-zA-Z0-9_-]+/, "/"));
+      if (onJoinSuccess) {
+        onJoinSuccess({
+          group_id: data.group_id,
+          group_name: data.group_name,
+        });
+      }
+    } catch (err) {
+      setAuthError(err.message || "Failed to join as guest.");
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -283,11 +315,11 @@ export default function InvitePreviewSheet({
               </p>
             </div>
 
-            {/* Toggle Login / Register */}
+            {/* Toggle Guest Join / Login / Register */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns: "1fr 1fr 1fr",
                 background: "#f1f5f9",
                 borderRadius: "10px",
                 padding: "3px",
@@ -297,22 +329,22 @@ export default function InvitePreviewSheet({
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode("register");
+                  setAuthMode("guest");
                   setAuthError("");
                 }}
                 style={{
-                  padding: "8px",
+                  padding: "8px 4px",
                   borderRadius: "8px",
                   border: "none",
                   fontWeight: 600,
-                  fontSize: "0.84rem",
+                  fontSize: "0.8rem",
                   cursor: "pointer",
-                  background: authMode === "register" ? "#ffffff" : "transparent",
-                  color: authMode === "register" ? "#6366f1" : "#64748b",
-                  boxShadow: authMode === "register" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+                  background: authMode === "guest" ? "#ffffff" : "transparent",
+                  color: authMode === "guest" ? "#6366f1" : "#64748b",
+                  boxShadow: authMode === "guest" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
                 }}
               >
-                Create Account
+                Join as Guest
               </button>
               <button
                 type="button"
@@ -321,11 +353,11 @@ export default function InvitePreviewSheet({
                   setAuthError("");
                 }}
                 style={{
-                  padding: "8px",
+                  padding: "8px 4px",
                   borderRadius: "8px",
                   border: "none",
                   fontWeight: 600,
-                  fontSize: "0.84rem",
+                  fontSize: "0.8rem",
                   cursor: "pointer",
                   background: authMode === "login" ? "#ffffff" : "transparent",
                   color: authMode === "login" ? "#6366f1" : "#64748b",
@@ -333,6 +365,26 @@ export default function InvitePreviewSheet({
                 }}
               >
                 Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("register");
+                  setAuthError("");
+                }}
+                style={{
+                  padding: "8px 4px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                  background: authMode === "register" ? "#ffffff" : "transparent",
+                  color: authMode === "register" ? "#6366f1" : "#64748b",
+                  boxShadow: authMode === "register" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+                }}
+              >
+                Register
               </button>
             </div>
 
@@ -342,11 +394,11 @@ export default function InvitePreviewSheet({
               </div>
             )}
 
-            <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {authMode === "register" && (
+            {authMode === "guest" ? (
+              <form onSubmit={handleGuestJoin} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 <div>
                   <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
-                    Your Name
+                    Your Name (Required)
                   </label>
                   <div style={{ position: "relative" }}>
                     <User size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "12px" }} />
@@ -354,74 +406,130 @@ export default function InvitePreviewSheet({
                       type="text"
                       required
                       placeholder="e.g. Rahul Sharma"
-                      value={authName}
-                      onChange={(e) => setAuthName(e.target.value)}
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
                       style={{ width: "100%", padding: "10px 12px 10px 36px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem" }}
                     />
                   </div>
                 </div>
-              )}
 
-              <div>
-                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
-                  Email Address
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Mail size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "12px" }} />
-                  <input
-                    type="email"
-                    required
-                    placeholder="you@example.com"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    style={{ width: "100%", padding: "10px 12px 10px 36px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem" }}
-                  />
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
+                    Phone Number (Optional)
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <Phone size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "12px" }} />
+                    <input
+                      type="tel"
+                      placeholder="e.g. +91 98765 43210"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      style={{ width: "100%", padding: "10px 12px 10px 36px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem" }}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
-                  Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Lock size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "12px" }} />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="••••••••"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    style={{ width: "100%", padding: "10px 36px 10px 36px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem" }}
-                  />
+                <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{ position: "absolute", right: "10px", top: "10px", background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
+                    className="invite-btn-decline"
+                    onClick={() => setShowAuthInline(false)}
+                    style={{ flex: 1, padding: "12px" }}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    className="invite-btn-accept"
+                    disabled={authLoading}
+                    style={{ flex: 2, padding: "12px" }}
+                  >
+                    {authLoading ? "Joining..." : "Enter Group Now"}
                   </button>
                 </div>
-              </div>
+              </form>
+            ) : (
+              <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {authMode === "register" && (
+                  <div>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
+                      Your Name
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <User size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "12px" }} />
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Rahul Sharma"
+                        value={authName}
+                        onChange={(e) => setAuthName(e.target.value)}
+                        style={{ width: "100%", padding: "10px 12px 10px 36px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem" }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-                <button
-                  type="button"
-                  className="invite-btn-decline"
-                  onClick={() => setShowAuthInline(false)}
-                  style={{ flex: 1, padding: "12px" }}
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="invite-btn-accept"
-                  disabled={authLoading}
-                  style={{ flex: 2, padding: "12px" }}
-                >
-                  {authLoading ? "Please wait..." : authMode === "register" ? "Join Group" : "Sign In & Join"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
+                    Email Address
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <Mail size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "12px" }} />
+                    <input
+                      type="email"
+                      required
+                      placeholder="you@example.com"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      style={{ width: "100%", padding: "10px 12px 10px 36px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem" }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
+                    Password
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <Lock size={16} color="#94a3b8" style={{ position: "absolute", left: "12px", top: "12px" }} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      style={{ width: "100%", padding: "10px 36px 10px 36px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: "absolute", right: "10px", top: "10px", background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                  <button
+                    type="button"
+                    className="invite-btn-decline"
+                    onClick={() => setShowAuthInline(false)}
+                    style={{ flex: 1, padding: "12px" }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    className="invite-btn-accept"
+                    disabled={authLoading}
+                    style={{ flex: 2, padding: "12px" }}
+                  >
+                    {authLoading ? "Please wait..." : authMode === "register" ? "Join Group" : "Sign In & Join"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         ) : (
           /* STANDARD DIRECT PREVIEW SHEET (MATCHES ATTACHED SCREENSHOT EXACTLY) */

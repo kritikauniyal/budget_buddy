@@ -8,8 +8,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Income, Expense, IncomeCategory, ExpenseCategory, User
-from app.dependencies.auth import get_optional_current_user
-from app.routers.dashboard import ensure_initial_seed, get_date_range
+from app.dependencies.auth import get_current_user, get_current_user_from_header_or_query
+from app.routers.dashboard import get_date_range
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/reports", tags=["Reports & Analytics"])
@@ -42,11 +42,10 @@ def get_report_data(
     period: str = "this_month",
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    ensure_initial_seed(db)
-    user = current_user or db.query(User).first()
+    user = current_user
     s_date, e_date = get_date_range(period, start_date, end_date)
 
     incomes = db.query(Income).filter(
@@ -130,7 +129,7 @@ def export_csv(
     period: str = "this_month",
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user_from_header_or_query),
     db: Session = Depends(get_db)
 ):
     """Exports all transactions within the selected range as an Excel-compatible CSV file."""
@@ -176,7 +175,7 @@ def export_pdf(
     period: str = "this_month",
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user_from_header_or_query),
     db: Session = Depends(get_db)
 ):
     """Generates a professional PDF Financial Statement."""

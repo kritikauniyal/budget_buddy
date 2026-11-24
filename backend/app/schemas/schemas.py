@@ -27,6 +27,7 @@ class UserLogin(BaseModel):
 class UserOut(UserBase):
     id: int
     is_active: bool
+    is_guest: Optional[bool] = False
     created_at: datetime
 
     class Config:
@@ -283,6 +284,19 @@ class GroupInvitationOut(BaseModel):
     status: str
     is_registered: bool
     created_at: str
+
+class EligibleFriendOut(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
+    initials: str
+
+class GuestJoinRequest(BaseModel):
+    guest_name: str
+    phone: Optional[str] = None
+
 
 # Recurring Expense Schemas
 class RecurringExpenseCreate(BaseModel):

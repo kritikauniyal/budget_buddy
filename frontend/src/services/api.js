@@ -294,16 +294,20 @@ export const api = {
   },
 
   getReportCsvUrl: (period = "this_month", startDate = "", endDate = "") => {
+    const token = localStorage.getItem("budget_buddy_token") || "";
     const parts = [`period=${encodeURIComponent(period)}`];
     if (startDate) parts.push(`start_date=${encodeURIComponent(startDate)}`);
     if (endDate) parts.push(`end_date=${encodeURIComponent(endDate)}`);
+    if (token) parts.push(`token=${encodeURIComponent(token)}`);
     return `${API_BASE_URL}/api/reports/export/csv?${parts.join("&")}`;
   },
 
   getReportPdfUrl: (period = "this_month", startDate = "", endDate = "") => {
+    const token = localStorage.getItem("budget_buddy_token") || "";
     const parts = [`period=${encodeURIComponent(period)}`];
     if (startDate) parts.push(`start_date=${encodeURIComponent(startDate)}`);
     if (endDate) parts.push(`end_date=${encodeURIComponent(endDate)}`);
+    if (token) parts.push(`token=${encodeURIComponent(token)}`);
     return `${API_BASE_URL}/api/reports/export/pdf?${parts.join("&")}`;
   },
 
@@ -411,6 +415,21 @@ export const api = {
 
   getGroupInvitations: async (groupId) => {
     return await request(`/api/invitations/group/${groupId}`);
+  },
+
+  getEligibleFriendsToInvite: async (groupId, search = "") => {
+    return await request(
+      `/api/invitations/group/${groupId}/eligible-friends${
+        search ? `?search=${encodeURIComponent(search)}` : ""
+      }`
+    );
+  },
+
+  joinAsGuest: async (token, guestData) => {
+    return await request(`/api/invitations/${token}/guest-join`, {
+      method: "POST",
+      body: JSON.stringify(guestData),
+    });
   },
 
   getGroupShareLink: async (groupId) => {

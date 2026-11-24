@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import User, ExpenseCategory, IncomeCategory, Expense, Income, MonthlyBudget
-from app.dependencies.auth import get_current_user, get_optional_current_user
+from app.dependencies.auth import get_current_user
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard Analytics"])
@@ -34,7 +34,7 @@ DEFAULT_INCOME_CATEGORIES = [
 ]
 
 def ensure_initial_seed(db: Session):
-    """Seed default category definitions if none exist in system."""
+    """Ensures base category definitions exist in system lookup tables."""
     if db.query(ExpenseCategory).first() is None:
         for cat in DEFAULT_EXPENSE_CATEGORIES:
             db.add(ExpenseCategory(name=cat["name"], icon=cat["icon"], color=cat["color"]))
@@ -44,9 +44,7 @@ def ensure_initial_seed(db: Session):
         for cat in DEFAULT_INCOME_CATEGORIES:
             db.add(IncomeCategory(name=cat["name"], icon=cat["icon"], color=cat["color"]))
         db.commit()
-
-    user = db.query(User).first()
-    return user
+    return None
 
 
 def get_date_range(period: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
@@ -125,20 +123,10 @@ def get_dashboard_summary(
     period: str = Query("this_month", description="today, this_week, this_month, last_month, custom"),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    ensure_initial_seed(db)
-    user = current_user or db.query(User).first()
-    if not user:
-        return SummaryResponse(
-            total_income=0.0, total_expenses=0.0, available_balance=0.0,
-            monthly_budget=0.0, remaining_budget=0.0, total_savings=0.0,
-            highest_spending_category="None", highest_spending_amount=0.0,
-            budget_utilization=0.0, budget_alert="normal",
-            period=period, start_date="", end_date=""
-        )
-
+    user = current_user
     s_date, e_date = get_date_range(period, start_date, end_date)
 
     incomes = db.query(Income).filter(
@@ -208,14 +196,10 @@ def get_dashboard_summary(
 @router.get("/recent-transactions", response_model=List[RecentTxItem])
 def get_recent_transactions(
     limit: int = 10,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    ensure_initial_seed(db)
-    user = current_user or db.query(User).first()
-    if not user:
-        return []
-
+    user = current_user
     inc_cats = {c.id: c for c in db.query(IncomeCategory).all()}
     exp_cats = {c.id: c for c in db.query(ExpenseCategory).all()}
 
@@ -258,14 +242,10 @@ def get_recent_transactions(
 
 @router.get("/monthly-analytics", response_model=List[MonthlyAnalyticsPoint])
 def get_monthly_analytics(
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    ensure_initial_seed(db)
-    user = current_user or db.query(User).first()
-    if not user:
-        return []
-
+    user = current_user
     today = datetime.date.today()
     points = []
 
@@ -316,14 +296,10 @@ def get_category_analytics(
     period: str = "this_month",
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    ensure_initial_seed(db)
-    user = current_user or db.query(User).first()
-    if not user:
-        return []
-
+    user = current_user
     s_date, e_date = get_date_range(period, start_date, end_date)
     expenses = db.query(Expense).filter(
         Expense.user_id == user.id,
@@ -360,7 +336,7 @@ def get_full_dashboard(
     period: str = "this_month",
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     summary = get_dashboard_summary(period, start_date, end_date, current_user, db)

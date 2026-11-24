@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Income, IncomeCategory, User
-from app.dependencies.auth import get_optional_current_user
+from app.dependencies.auth import get_current_user
 from app.routers.dashboard import ensure_initial_seed
 from pydantic import BaseModel
 
@@ -31,10 +31,10 @@ class IncomeOut(BaseModel):
 @router.get("", response_model=List[IncomeOut])
 def get_incomes(
     search: Optional[str] = None,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     query = db.query(Income).filter(Income.user_id == user.id)
 
     if search:
@@ -64,10 +64,10 @@ def get_incomes(
 @router.post("", response_model=IncomeOut)
 def create_income(
     item: IncomeCreate,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
 
     # Resolve category
     category = None
@@ -114,10 +114,10 @@ def create_income(
 @router.delete("/{income_id}")
 def delete_income(
     income_id: int,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     inc = db.query(Income).filter(Income.id == income_id, Income.user_id == user.id).first()
     if not inc:
         raise HTTPException(status_code=404, detail="Income record not found")
@@ -132,10 +132,10 @@ def delete_income(
 def update_income(
     income_id: int,
     item: IncomeCreate,
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    user = current_user or ensure_initial_seed(db)
+    user = current_user
     inc = db.query(Income).filter(Income.id == income_id, Income.user_id == user.id).first()
     if not inc:
         raise HTTPException(status_code=404, detail="Income record not found")

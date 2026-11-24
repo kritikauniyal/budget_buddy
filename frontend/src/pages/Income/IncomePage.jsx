@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Search, Trash2, Edit2, TrendingUp, X } from "lucide-react";
 import api from "../../services/api";
+import { confirmDelete, showError, showSuccess } from "../../utils/swal";
 
 export default function IncomePage() {
   const [incomes, setIncomes] = useState([]);
@@ -79,20 +80,28 @@ export default function IncomePage() {
       setShowModal(false);
       setEditingItem(null);
       await loadIncomes();
+      showSuccess("Income saved successfully!");
     } catch (err) {
-      alert("Error saving income: " + err.message);
+      showError("Error saving income", err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this income record?")) return;
+    const isConfirmed = await confirmDelete({
+      title: "Delete Income?",
+      text: "This income record will be permanently deleted.",
+      confirmButtonText: "Yes, delete"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.deleteIncome(id);
       await loadIncomes();
+      showSuccess("Income record deleted!");
     } catch (err) {
-      alert("Failed to delete: " + err.message);
+      showError("Failed to delete", err.message);
     }
   };
 

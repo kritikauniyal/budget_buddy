@@ -35,6 +35,7 @@ import api from "../../services/api";
 import AddGroupExpenseModal from "./AddGroupExpenseModal";
 import InviteMembersModal from "./InviteMembersModal";
 import RecordSettlementModal from "./RecordSettlementModal";
+import { confirmDelete, showError, showSuccess } from "../../utils/swal";
 
 const TABS = [
   { id: "expenses", label: "Expenses Inbox" },
@@ -127,12 +128,19 @@ export default function GroupDetailView({
   }, [groupId]);
 
   const handleDeleteExpense = async (expenseId) => {
-    if (!window.confirm("Are you sure you want to delete this expense?")) return;
+    const isConfirmed = await confirmDelete({
+      title: "Delete Group Expense?",
+      text: "This group expense and all member split calculations will be permanently deleted.",
+      confirmButtonText: "Yes, delete"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.deleteGroupExpense(groupId, expenseId);
       await loadAllGroupData();
+      showSuccess("Group expense deleted!");
     } catch (err) {
-      alert(err.message || "Failed to delete expense.");
+      showError("Failed to delete expense", err.message);
     }
   };
 
@@ -146,22 +154,36 @@ export default function GroupDetailView({
   };
 
   const handleRemoveMember = async (userId, memberName) => {
-    if (!window.confirm(`Are you sure you want to remove ${memberName} from this group?`)) return;
+    const isConfirmed = await confirmDelete({
+      title: `Remove ${memberName}?`,
+      text: `Are you sure you want to remove ${memberName} from this group?`,
+      confirmButtonText: "Yes, remove"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.removeGroupMember(groupId, userId);
       await loadAllGroupData();
+      showSuccess("Member removed successfully!");
     } catch (err) {
-      alert(err.message || "Failed to remove member.");
+      showError("Failed to remove member", err.message);
     }
   };
 
   const handleDeleteGroup = async () => {
-    if (!window.confirm(`Are you sure you want to permanently delete '${group.name}'? All group expenses and history will be deleted.`)) return;
+    const isConfirmed = await confirmDelete({
+      title: `Permanently Delete '${group.name}'?`,
+      text: "All shared group expenses, settlements, and member balances will be erased. This action cannot be undone.",
+      confirmButtonText: "Yes, delete group"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.deleteGroup(groupId);
+      showSuccess("Group deleted!");
       onBack();
     } catch (err) {
-      alert(err.message || "Failed to delete group.");
+      showError("Failed to delete group", err.message);
     }
   };
 
@@ -1081,7 +1103,7 @@ export default function GroupDetailView({
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(`${window.location.origin}/invite/${inv.token}`);
-                          alert("Invitation link copied!");
+                          showSuccess("Invitation link copied!");
                         }}
                         style={{
                           background: "#ffffff",
@@ -1099,12 +1121,18 @@ export default function GroupDetailView({
                         <button
                           type="button"
                           onClick={async () => {
-                            if (!window.confirm("Are you sure you want to cancel this invitation?")) return;
+                            const isConfirmed = await confirmDelete({
+                              title: "Cancel Invitation?",
+                              text: "This invitation link will be invalidated.",
+                              confirmButtonText: "Yes, cancel it"
+                            });
+                            if (!isConfirmed) return;
                             try {
                               await api.cancelInvitation(inv.id);
                               setInvitations((prev) => prev.filter((i) => i.id !== inv.id));
+                              showSuccess("Invitation cancelled");
                             } catch (e) {
-                              alert(e.message || "Could not cancel invitation");
+                              showError("Could not cancel invitation", e.message);
                             }
                           }}
                           style={{

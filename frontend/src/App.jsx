@@ -18,6 +18,7 @@ import AuthPage from "./pages/Auth/AuthPage";
 import OnboardingModal from "./components/onboarding/OnboardingModal";
 import InvitePreviewSheet from "./components/invitations/InvitePreviewSheet";
 import api from "./services/api";
+import { confirmAction } from "./utils/swal";
 import "./App.css";
 
 function MainApp() {
@@ -113,8 +114,15 @@ function MainApp() {
     await loadData();
   };
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
+  const handleLogout = async () => {
+    const isConfirmed = await confirmAction({
+      title: "Log Out?",
+      text: "Are you sure you want to log out of Budget Buddy?",
+      confirmButtonText: "Yes, log out",
+      confirmButtonColor: "#6366f1",
+      icon: "question"
+    });
+    if (isConfirmed) {
       logout();
       setActivePage("Dashboard");
     }

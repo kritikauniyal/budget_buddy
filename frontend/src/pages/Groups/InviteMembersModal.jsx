@@ -16,6 +16,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import api from "../../services/api";
+import { confirmDelete, showSuccess, showError } from "../../utils/swal";
 
 export default function InviteMembersModal({ group, currentUser, onClose, onMembersInvited }) {
   const [activeTab, setActiveTab] = useState("registered"); // 'registered' | 'link' | 'manual' | 'pending'
@@ -180,14 +181,21 @@ export default function InviteMembersModal({ group, currentUser, onClose, onMemb
 
   // Revoke an invitation
   const handleRevokeInvite = async (invitationId) => {
+    const isConfirmed = await confirmDelete({
+      title: "Cancel Invitation?",
+      text: "This invitation link will be invalidated immediately.",
+      confirmButtonText: "Yes, cancel it"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.cancelInvitation(invitationId);
       setExistingInvites((prev) => prev.filter((i) => i.id !== invitationId));
-      setNotice("Invitation cancelled successfully.");
+      showSuccess("Invitation cancelled successfully!");
       // Refresh eligible friends in case revoked user is registered
       loadEligibleFriends(searchQuery);
     } catch (err) {
-      setError(err.message || "Could not cancel invitation.");
+      showError("Could not cancel invitation", err.message);
     }
   };
 

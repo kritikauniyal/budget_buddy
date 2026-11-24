@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Users, CheckCircle2, AlertCircle, ArrowRight, Lock, Mail, User, Phone, X, Eye, EyeOff } from "lucide-react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { confirmAction } from "../../utils/swal";
 
 export default function InvitePreviewSheet({
   invite,
@@ -90,10 +91,14 @@ export default function InvitePreviewSheet({
 
   // Handle Decline
   const handleDecline = async () => {
-    const confirmDecline = window.confirm(
-      `Are you sure you want to decline the invitation to join "${invite.group_name}"?`
-    );
-    if (!confirmDecline) return;
+    const isConfirmed = await confirmAction({
+      title: "Decline Invitation?",
+      text: `Are you sure you want to decline the invitation to join "${invite.group_name}"?`,
+      confirmButtonText: "Yes, decline",
+      confirmButtonColor: "#ef4444",
+      icon: "warning"
+    });
+    if (!isConfirmed) return;
 
     setLoading(true);
     setError("");

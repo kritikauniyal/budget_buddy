@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Tags, Trash2, X } from "lucide-react";
 import api from "../../services/api";
+import { confirmDelete, showError, showSuccess } from "../../utils/swal";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -46,20 +47,28 @@ export default function CategoriesPage() {
         type: "expense",
       });
       await loadCategories();
+      showSuccess("Category created!");
     } catch (err) {
-      alert("Error adding category: " + err.message);
+      showError("Error adding category", err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id, type) => {
-    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    const isConfirmed = await confirmDelete({
+      title: "Delete Category?",
+      text: "Existing transactions with this category will remain, but the category tag will be removed.",
+      confirmButtonText: "Yes, delete"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.deleteCategory(id, type);
       await loadCategories();
+      showSuccess("Category deleted!");
     } catch (err) {
-      alert(err.message || "Failed to delete category.");
+      showError("Failed to delete category", err.message);
     }
   };
 

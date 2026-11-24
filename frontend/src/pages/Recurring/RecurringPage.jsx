@@ -12,6 +12,7 @@ import {
   X
 } from "lucide-react";
 import api from "../../services/api";
+import { confirmDelete, showError, showSuccess } from "../../utils/swal";
 
 export default function RecurringPage() {
   const [recurringList, setRecurringList] = useState([]);
@@ -81,23 +82,29 @@ export default function RecurringPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this recurring expense?")) return;
+    const isConfirmed = await confirmDelete({
+      title: "Delete Recurring Bill?",
+      text: "You won't receive automatic reminders or auto-logging for this bill.",
+      confirmButtonText: "Yes, delete"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.deleteRecurringExpense(id);
       await loadRecurring();
+      showSuccess("Recurring bill deleted!");
     } catch (err) {
-      alert("Failed to delete: " + err.message);
+      showError("Failed to delete", err.message);
     }
   };
 
   const handleLogNow = async (id, title) => {
     try {
       const res = await api.logRecurringExpenseNow(id);
-      setFeedbackMsg(res.message || `Logged ${title} into your live expenses!`);
-      setTimeout(() => setFeedbackMsg(""), 4000);
+      showSuccess(res.message || `Logged ${title} into your live expenses!`);
       await loadRecurring();
     } catch (err) {
-      alert("Failed to log expense: " + err.message);
+      showError("Failed to log expense", err.message);
     }
   };
 

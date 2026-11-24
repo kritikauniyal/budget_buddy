@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, AlertTriangle, AlertOctagon, CheckCircle2, Edit3, X } from "lucide-react";
 import api from "../../services/api";
+import { showError, showSuccess } from "../../utils/swal";
 
 export default function BudgetsPage() {
   const [budgetData, setBudgetData] = useState(null);
@@ -36,9 +37,10 @@ export default function BudgetsPage() {
         total_budget: parseFloat(newBudget),
       });
       setShowModal(false);
+      showSuccess("Budget updated successfully!");
       await loadBudgets();
     } catch (err) {
-      alert("Failed to update budget: " + err.message);
+      showError("Failed to update budget", err.message);
     } finally {
       setSubmitting(false);
     }

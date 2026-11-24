@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Search, Trash2, Edit2, Receipt, X } from "lucide-react";
 import api from "../../services/api";
+import { confirmDelete, showError, showSuccess } from "../../utils/swal";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
@@ -94,20 +95,28 @@ export default function ExpensesPage() {
       setShowModal(false);
       setEditingItem(null);
       await loadExpenses();
+      showSuccess("Expense saved successfully!");
     } catch (err) {
-      alert("Error saving expense: " + err.message);
+      showError("Error saving expense", err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this expense?")) return;
+    const isConfirmed = await confirmDelete({
+      title: "Delete Expense?",
+      text: "This expense record will be permanently deleted.",
+      confirmButtonText: "Yes, delete"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.deleteExpense(id);
       await loadExpenses();
+      showSuccess("Expense deleted successfully!");
     } catch (err) {
-      alert("Failed to delete: " + err.message);
+      showError("Failed to delete", err.message);
     }
   };
 

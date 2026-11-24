@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Check, X, Users, AlertCircle, Clock, CheckCircle2, XCircle } from "lucide-react";
 import api from "../../services/api";
+import { confirmAction, confirmDelete, showError, showSuccess } from "../../utils/swal";
 
 export default function GroupInboxPage() {
   const [items, setItems] = useState([]);
@@ -73,20 +74,30 @@ export default function GroupInboxPage() {
         description: "",
       });
       await loadInbox();
+      showSuccess("Expense submitted for group review!");
     } catch (err) {
-      alert("Submission error: " + err.message);
+      showError("Submission error", err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleApprove = async (id) => {
-    if (!window.confirm("Approve this expense? It will be added to your live expenses.")) return;
+    const isConfirmed = await confirmAction({
+      title: "Approve Expense?",
+      text: "This expense will be added to your live spending records.",
+      confirmButtonText: "Yes, approve",
+      confirmButtonColor: "#16a34a",
+      icon: "question"
+    });
+    if (!isConfirmed) return;
+
     try {
       await api.approveGroupExpense(id);
+      showSuccess("Expense approved!");
       await loadInbox();
     } catch (err) {
-      alert("Error approving expense: " + err.message);
+      showError("Error approving expense", err.message);
     }
   };
 
@@ -98,9 +109,10 @@ export default function GroupInboxPage() {
       await api.rejectGroupExpense(rejectingId, rejectReason);
       setRejectingId(null);
       setRejectReason("");
+      showSuccess("Expense rejected");
       await loadInbox();
     } catch (err) {
-      alert("Error rejecting expense: " + err.message);
+      showError("Error rejecting expense", err.message);
     }
   };
 

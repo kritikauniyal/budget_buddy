@@ -118,9 +118,9 @@ export default function Topbar({
 
       {/* Topbar Right: Actions and User Dropdown */}
       <div className="topbar-actions">
-        {/* Refresh Button */}
+        {/* Refresh Button (desktop) */}
         <button
-          className="icon-button topbar-action-btn"
+          className="icon-button topbar-action-btn desktop-only-action"
           title="Refresh Data"
           onClick={onRefresh}
           aria-label="Refresh Data"
@@ -128,9 +128,9 @@ export default function Topbar({
           <RefreshCw size={17} className={isRefreshing ? "spin-icon" : ""} />
         </button>
 
-        {/* Quick Search */}
+        {/* Quick Search (desktop) */}
         <button
-          className="icon-button topbar-action-btn"
+          className="icon-button topbar-action-btn desktop-only-action"
           title="Search Transactions"
           aria-label="Search Transactions"
           onClick={() => handleNav("Transactions")}

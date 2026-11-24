@@ -122,49 +122,36 @@ export default function GroupsPage({
 
   return (
     <div className="groups-container">
-      {/* Header Banner */}
-      <div className="welcome-section" style={{ flexWrap: "wrap", gap: "14px" }}>
-        <div>
+      {/* Modern Groups App Header */}
+      <div className="groups-page-header">
+        <div className="groups-header-meta">
           <h2>Shared Groups</h2>
-          <p>Split apartment rent, travel trips, dining bills, and settle with flatmates easily.</p>
+          <p className="groups-header-sub">
+            {groups.length} {groups.length === 1 ? "group" : "groups"} • Split balances effortlessly
+          </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <div className="groups-header-actions-bar">
           {/* Refresh */}
           <button
             onClick={loadGroupsData}
-            className="secondary-button"
-            style={{ padding: "9px 12px", borderRadius: "12px" }}
+            className="groups-header-icon-btn"
             title="Refresh groups"
             disabled={refreshing}
+            aria-label="Refresh"
           >
-            <RefreshCw size={16} className={refreshing ? "spin-icon" : ""} />
+            <RefreshCw size={15} className={refreshing ? "spin-icon" : ""} />
           </button>
 
           {/* Pending Invitations */}
           <button
             onClick={() => setShowInvitesModal(true)}
-            className="secondary-button"
-            style={{
-              padding: "9px 16px",
-              borderRadius: "12px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              position: "relative"
-            }}
+            className="groups-header-pill invites"
           >
-            <Mail size={16} />
-            <span>Invitations</span>
+            <Mail size={15} />
+            <span>Invites</span>
             {pendingInvitesCount > 0 && (
-              <span style={{
-                background: "#ef4444",
-                color: "#ffffff",
-                borderRadius: "10px",
-                padding: "2px 7px",
-                fontSize: "0.72rem",
-                fontWeight: 700
-              }}>
+              <span className="invites-badge-dot">
                 {pendingInvitesCount}
               </span>
             )}
@@ -173,17 +160,10 @@ export default function GroupsPage({
           {/* Create Group */}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="primary-button"
-            style={{
-              padding: "9px 18px",
-              borderRadius: "12px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px"
-            }}
+            className="groups-header-pill primary"
           >
-            <Plus size={18} />
-            <span>Create Group</span>
+            <Plus size={16} strokeWidth={2.4} />
+            <span>New Group</span>
           </button>
         </div>
       </div>

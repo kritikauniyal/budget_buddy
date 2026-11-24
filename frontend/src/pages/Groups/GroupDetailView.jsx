@@ -255,11 +255,10 @@ export default function GroupDetailView({
                   </span>
                 )}
               </div>
-              {group.description && (
-                <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-                  {group.description}
-                </p>
-              )}
+              <div style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "3px" }}>
+                <span>{members.length} {members.length === 1 ? "member" : "members"}</span>
+                {group.description && <span> • {group.description}</span>}
+              </div>
             </div>
           </div>
 
@@ -267,7 +266,7 @@ export default function GroupDetailView({
           <div className="group-header-actions">
             <button
               onClick={loadAllGroupData}
-              className="secondary-button"
+              className="secondary-button icon-only"
               style={{ padding: "8px 12px", minWidth: "auto", borderRadius: "12px" }}
               title="Refresh group data"
               disabled={refreshing}
@@ -283,28 +282,86 @@ export default function GroupDetailView({
               <UserPlus size={16} />
               <span>Invite</span>
             </button>
-
-            <button
-              onClick={() => {
-                setSettlePreload({ payerId: null, receiverId: null, amount: "" });
-                setShowSettleModal(true);
-              }}
-              className="secondary-button"
-              style={{ padding: "8px 14px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "6px", color: "#0f766e", borderColor: "#99f6e4" }}
-            >
-              <CheckCircle2 size={16} />
-              <span>Settle Up</span>
-            </button>
-
-            <button
-              onClick={() => setShowAddExpense(true)}
-              className="primary-button"
-              style={{ padding: "8px 16px", borderRadius: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-            >
-              <Plus size={18} />
-              <span>Add Expense</span>
-            </button>
           </div>
+        </div>
+
+        {/* Dynamic Balance Hero Banner */}
+        {dashboard && (
+          <div className={`group-hero-balance-banner ${myNetBalance < -0.01 ? "owe" : myNetBalance > 0.01 ? "receive" : "settled"}`}>
+            <div className="balance-banner-meta">
+              <span className="balance-banner-label">Your Group Balance</span>
+              <h3 className="balance-banner-amount">
+                {myNetBalance < -0.01
+                  ? `-₹${Math.abs(myNetBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                  : myNetBalance > 0.01
+                  ? `+₹${myNetBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                  : "₹0.00"}
+              </h3>
+              <p className="balance-banner-hint">
+                {myNetBalance < -0.01 ? (
+                  (() => {
+                    const debt = balancesData?.suggested_settlements?.find((s) => s.from_user_id === currentUser?.id);
+                    return debt ? `You owe ${debt.to_user_name} ₹${debt.amount.toLocaleString("en-IN")}` : "You owe money to the group";
+                  })()
+                ) : myNetBalance > 0.01 ? (
+                  (() => {
+                    const credit = balancesData?.suggested_settlements?.find((s) => s.to_user_id === currentUser?.id);
+                    return credit ? `${credit.from_user_name} owes you ₹${credit.amount.toLocaleString("en-IN")}` : "You are owed money by the group";
+                  })()
+                ) : (
+                  "All settled up in this group! ✨"
+                )}
+              </p>
+            </div>
+
+            {myNetBalance < -0.01 && (
+              <button
+                type="button"
+                className="banner-settle-action-btn"
+                onClick={() => {
+                  const debt = balancesData?.suggested_settlements?.find((s) => s.from_user_id === currentUser?.id);
+                  if (debt) {
+                    setSettlePreload({ payerId: currentUser?.id, receiverId: debt.to_user_id, amount: String(debt.amount) });
+                  } else {
+                    setSettlePreload({ payerId: null, receiverId: null, amount: "" });
+                  }
+                  setShowSettleModal(true);
+                }}
+              >
+                <CheckCircle2 size={16} />
+                <span>Settle Up</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Quick Action Button Bar */}
+        <div className="group-mobile-action-bar">
+          <button
+            type="button"
+            className="group-action-btn primary"
+            onClick={() => setShowAddExpense(true)}
+          >
+            <Plus size={18} strokeWidth={2.6} />
+            <span>+ Add Expense</span>
+          </button>
+
+          <button
+            type="button"
+            className="group-action-btn secondary"
+            onClick={() => {
+              const debt = balancesData?.suggested_settlements?.find((s) => s.from_user_id === currentUser?.id);
+              if (debt) {
+                setSettlePreload({ payerId: currentUser?.id, receiverId: debt.to_user_id, amount: String(debt.amount) });
+              } else {
+                setSettlePreload({ payerId: null, receiverId: null, amount: "" });
+              }
+              setShowSettleModal(true);
+            }}
+          >
+            <CheckCircle2 size={16} />
+            <span>Settle Up</span>
+          </button>
         </div>
 
         {/* Navigation Tabs Bar */}

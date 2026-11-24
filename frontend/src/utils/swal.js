@@ -86,3 +86,4 @@ export const showError = (title, text = "") => {
 };
 
 export default Swal;
+
